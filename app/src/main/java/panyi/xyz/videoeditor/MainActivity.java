@@ -1,11 +1,8 @@
 package panyi.xyz.videoeditor;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.media.MediaCodec;
-import android.media.MediaFormat;
 import android.os.Bundle;
+import androidx.appcompat.app.AppCompatActivity;
+import panyi.xyz.videoeditor.activity.VideoEditorActivity;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -13,5 +10,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        findViewById(R.id.click_btn).setOnClickListener((v)->{
+            VideoEditorActivity.start(MainActivity.this);
+        });
     }
 }
