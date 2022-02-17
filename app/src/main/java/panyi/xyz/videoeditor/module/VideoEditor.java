@@ -15,7 +15,7 @@ public class VideoEditor {
 
     private VideoEditorGLView mGLView;
 
-    public void prepare(ViewGroup container){
+    public void initView(ViewGroup container){
         mContainer = container;
         addGLView();
     }

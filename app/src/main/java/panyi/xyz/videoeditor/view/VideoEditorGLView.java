@@ -2,7 +2,6 @@ package panyi.xyz.videoeditor.view;
 
 import android.content.Context;
 import android.opengl.GLES30;
-import android.opengl.GLES32;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 
@@ -10,8 +9,11 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import panyi.xyz.videoeditor.util.LogUtil;
+import panyi.xyz.videoeditor.view.widget.VideoTimeline;
 
 public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.Renderer {
+    private VideoTimeline mVideoTimeline;
+
     public VideoEditorGLView(Context context) {
         super(context);
         init();
@@ -32,6 +34,7 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
     @Override
     public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
+        mVideoTimeline = new VideoTimeline();
     }
 
     @Override
@@ -44,5 +47,7 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     public void onDrawFrame(GL10 gl10) {
         GLES30.glClearColor(0 , 0, 0, 1.0f);
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+
+        mVideoTimeline.render();
     }
 }
