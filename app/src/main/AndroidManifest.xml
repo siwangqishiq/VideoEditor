@@ -19,8 +19,11 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="panyi.xyz.videoeditor.activity.VideoEditorActivity">
-        </activity>
+        <!-- 编辑-->
+        <activity android:name="panyi.xyz.videoeditor.activity.VideoEditorActivity" />
+
+        <!-- 文件选择 -->
+        <activity android:name="panyi.xyz.videoeditor.activity.SelectFileActivity" />
     </application>
 
 </manifest>
