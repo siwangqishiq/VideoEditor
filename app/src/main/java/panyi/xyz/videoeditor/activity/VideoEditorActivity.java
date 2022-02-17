@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -14,6 +15,7 @@ import androidx.core.app.ActivityCompat;
 
 import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.model.SelectFileItem;
+import panyi.xyz.videoeditor.module.VideoEditor;
 import panyi.xyz.videoeditor.util.LogUtil;
 
 public class VideoEditorActivity extends AppCompatActivity {
@@ -33,6 +35,8 @@ public class VideoEditorActivity extends AppCompatActivity {
 
     private static final int STATUS_UNSELECT_EDIT_FILE = 0;// 状态 未选择素材
     private static final int STATUS_HAS_SELECTED_EDIT_FILE = 1;//已选择素材
+
+    private VideoEditor mVideoEditor;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,7 +63,8 @@ public class VideoEditorActivity extends AppCompatActivity {
     }
 
     private void initView(){
-
+        mVideoEditor = new VideoEditor();
+        mVideoEditor.prepare((ViewGroup)findViewById(R.id.preview_panel));
     }
 
     /**
@@ -110,11 +115,16 @@ public class VideoEditorActivity extends AppCompatActivity {
             return;
 
         SelectFileItem selectFile = (SelectFileItem)data.getSerializableExtra("data");
-        LogUtil.log("select file :" + selectFile.path +" size: " + selectFile.size +" duration:" + selectFile.duration);
+        LogUtil.log("select file :" + selectFile.path +"    size: " + selectFile.size +" duration:" + selectFile.duration);
+
+
     }
 
     @Override
     protected void onDestroy() {
+        if(mVideoEditor != null){
+            mVideoEditor.free();
+        }
         super.onDestroy();
     }
 }
