@@ -3,6 +3,9 @@ package panyi.xyz.videoeditor.module;
 import android.content.Context;
 import android.view.ViewGroup;
 
+import panyi.xyz.videoeditor.model.Code;
+import panyi.xyz.videoeditor.model.SelectFileItem;
+import panyi.xyz.videoeditor.model.VideoInfo;
 import panyi.xyz.videoeditor.view.VideoEditorGLView;
 
 /**
@@ -14,6 +17,8 @@ public class VideoEditor {
     private ViewGroup mContainer;
 
     private VideoEditorGLView mGLView;
+
+    public VideoInfo mVideoInfo;//视频meta信息
 
     public void initView(ViewGroup container){
         mContainer = container;
@@ -30,5 +35,9 @@ public class VideoEditor {
         mGLView = new VideoEditorGLView(mContainer.getContext());
         ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT , ViewGroup.LayoutParams.MATCH_PARENT);
         mContainer.addView(mGLView , params);
+    }
+
+    public int prepare(final SelectFileItem fileItem){
+        return Code.ERROR;
     }
 }
