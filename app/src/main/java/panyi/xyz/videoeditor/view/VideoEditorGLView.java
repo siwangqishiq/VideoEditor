@@ -5,14 +5,23 @@ import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.view.widget.VideoTimeline;
 
+/**
+ *
+ *
+ */
 public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.Renderer {
     private VideoTimeline mVideoTimeline;
+
+    public static final int TEXTURE_SIZE = 16;
 
     public VideoEditorGLView(Context context) {
         super(context);
@@ -35,12 +44,26 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     @Override
     public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
         mVideoTimeline = new VideoTimeline();
+        initTextures();
+    }
+
+    private void initTextures(){
+        int[] ids = new int[TEXTURE_SIZE];
+        GLES30.glGenTextures(TEXTURE_SIZE , ids , 0);
+
+
     }
 
     @Override
     public void onSurfaceChanged(GL10 gl10, int width, int height) {
         GLES30.glViewport(0 , 0 , width , height);
         LogUtil.log("GLView width = " + width +" height = " + height);
+
+        initComponent();
+    }
+
+    private void initComponent(){
+
     }
 
     @Override
@@ -49,5 +72,9 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
         mVideoTimeline.render();
+    }
+
+    public void onDestory(){
+        IntBuffer buf = ByteBuffer.allocate(4).asIntBuffer();
     }
 }

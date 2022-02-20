@@ -18,6 +18,10 @@ import panyi.xyz.videoeditor.model.SelectFileItem;
 import panyi.xyz.videoeditor.module.VideoEditor;
 import panyi.xyz.videoeditor.util.LogUtil;
 
+/**
+ *
+ *
+ */
 public class VideoEditorActivity extends AppCompatActivity {
     /**
      *
@@ -114,10 +118,10 @@ public class VideoEditorActivity extends AppCompatActivity {
         if(data == null)
             return;
 
-        SelectFileItem selectFile = (SelectFileItem)data.getSerializableExtra("data");
+        final SelectFileItem selectFile = (SelectFileItem)data.getSerializableExtra("data");
         LogUtil.log("select file :" + selectFile.path +"    size: " + selectFile.size +" duration:" + selectFile.duration);
 
-
+        mVideoEditor.prepare(selectFile);
     }
 
     @Override

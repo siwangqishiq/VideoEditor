@@ -56,7 +56,7 @@ public class MediaUtils {
         for (trackIndex = 0; trackIndex < extractor.getTrackCount(); trackIndex++) {
             MediaFormat trackMediaFormat = extractor.getTrackFormat(trackIndex);
             if (trackMediaFormat.getString(MediaFormat.KEY_MIME).startsWith(mimeTypePrefix)) {
-                long duration = trackMediaFormat.getLong(MediaFormat.KEY_DURATION);
+//                long duration = trackMediaFormat.getLong(MediaFormat.KEY_DURATION);
                 //System.out.println(mimeTypePrefix +"  duration = " + duration);
                 extractor.selectTrack(trackIndex);
                 break;
@@ -64,11 +64,8 @@ public class MediaUtils {
         }
         if (trackIndex == extractor.getTrackCount()) {
             extractor.release();
-            throw new IllegalStateException("couldn't get a track for " + mimeTypePrefix);
+            return null;
         }
         return extractor;
     }
-
-
-
 }
