@@ -12,7 +12,7 @@ import java.io.IOException;
  * 多媒体Util
  *
  */
-public class MediaUtils {
+public class MediaUtil {
     private static final String TAG = "MediaUtils";
 
     public static final String TYPE_VIDEO = "video";

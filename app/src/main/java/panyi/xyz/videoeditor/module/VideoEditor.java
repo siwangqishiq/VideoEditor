@@ -3,26 +3,20 @@ package panyi.xyz.videoeditor.module;
 import android.content.Context;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
-import android.media.MediaCodecInfo;
-import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.os.Build;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
-
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.model.Code;
 import panyi.xyz.videoeditor.model.SelectFileItem;
 import panyi.xyz.videoeditor.model.VideoInfo;
 import panyi.xyz.videoeditor.util.LogUtil;
-import panyi.xyz.videoeditor.util.MediaUtils;
+import panyi.xyz.videoeditor.util.MediaUtil;
 import panyi.xyz.videoeditor.view.VideoEditorGLView;
 
 /**
@@ -63,7 +57,7 @@ public class VideoEditor {
 
     public int prepare(final SelectFileItem fileItem){
         try {
-            mVideoExtractor = MediaUtils.createMediaExtractorByMimeType(fileItem.path , MediaUtils.TYPE_VIDEO);
+            mVideoExtractor = MediaUtil.createMediaExtractorByMimeType(fileItem.path , MediaUtil.TYPE_VIDEO);
         } catch (IOException e) {
             e.printStackTrace();
             mVideoExtractor = null;
