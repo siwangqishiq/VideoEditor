@@ -11,7 +11,9 @@ import java.nio.IntBuffer;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import panyi.xyz.videoeditor.math.Matrix;
 import panyi.xyz.videoeditor.util.LogUtil;
+import panyi.xyz.videoeditor.view.widget.Camera;
 import panyi.xyz.videoeditor.view.widget.VideoTimeline;
 
 /**
@@ -56,13 +58,27 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
     @Override
     public void onSurfaceChanged(GL10 gl10, int width, int height) {
+        screenWidth = width;
+        screenHeight = height;
+
         GLES30.glViewport(0 , 0 , width , height);
         LogUtil.log("GLView width = " + width +" height = " + height);
 
         initComponent();
     }
 
+    //正交投影矩阵
+    private Camera mCamera;
+    private float screenWidth;
+    private float screenHeight;
+
     private void initComponent(){
+        mCamera = new Camera(0 , 0, screenWidth , screenHeight);
+
+        loadShader();
+    }
+
+    private void loadShader(){
 
     }
 
@@ -70,6 +86,7 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     public void onDrawFrame(GL10 gl10) {
         GLES30.glClearColor(0 , 0, 0, 1.0f);
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
+
 
         mVideoTimeline.render();
     }
