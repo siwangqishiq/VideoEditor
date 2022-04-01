@@ -5,13 +5,11 @@ import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.os.Build;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -48,7 +46,7 @@ public class VideoEditor {
             mVideoExtractor.release();
         }
         if(mGLView != null){
-            mGLView.onDestory();
+            mGLView.onDestroy();
         }
     }
 

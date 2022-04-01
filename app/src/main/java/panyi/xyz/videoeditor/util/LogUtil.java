@@ -8,6 +8,11 @@ public final class LogUtil {
         System.out.println(msg);
     }
 
+    public static void formatLog(String template , Object ... params){
+        String msg = String.format(template , params);
+        log(msg);
+    }
+
     public static void logMatrix(float[] matrix){
         System.out.println("==========");
         for(int i = 0; i < 3;i++){
