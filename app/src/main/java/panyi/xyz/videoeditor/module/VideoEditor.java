@@ -120,7 +120,7 @@ public class VideoEditor {
                         return;
                     }
 
-                    LogUtil.log("onInputBufferAvailable index = " + index);
+//                    LogUtil.log("onInputBufferAvailable index = " + index);
 
                     ByteBuffer buf = codec.getInputBuffer(index);
                     final int readSize = mVideoExtractor.readSampleData(buf , 0);
@@ -137,7 +137,7 @@ public class VideoEditor {
 
                 @Override
                 public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index, @NonNull MediaCodec.BufferInfo info) {
-                    LogUtil.log("presentationTimeUs = " + info.presentationTimeUs);
+                    // LogUtil.log("presentationTimeUs = " + info.presentationTimeUs);
 
                     codec.releaseOutputBuffer(index , info.presentationTimeUs * 1000);
                 }

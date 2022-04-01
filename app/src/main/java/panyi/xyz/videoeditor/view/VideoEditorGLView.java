@@ -17,6 +17,7 @@ import panyi.xyz.videoeditor.view.widget.Camera;
 import panyi.xyz.videoeditor.view.widget.IRender;
 import panyi.xyz.videoeditor.view.widget.RectWidget;
 import panyi.xyz.videoeditor.view.widget.VideoTimeline;
+import panyi.xyz.videoeditor.view.widget.VideoWidget;
 
 /**
  *
@@ -85,8 +86,11 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
         camera = new Camera(0 , 0, screenWidth , screenHeight);
 
         //add components
-        IRender rectWidget = new RectWidget(this);
-        components.add(rectWidget);
+//        IRender rectWidget = new RectWidget(this);
+//        components.add(rectWidget);
+
+        IRender videoWidget = new VideoWidget(this);
+        components.add(videoWidget);
     }
 
     private void onInit(){

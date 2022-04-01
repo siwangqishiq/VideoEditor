@@ -4,7 +4,7 @@ public class Camera {
     public float x;
     public float y;
     public float viewWidth;
-    private float viewHeight;
+    public float viewHeight;
 
     private float[] mMatrix = new float[3 * 3];
     private float[] result = new float[2];
