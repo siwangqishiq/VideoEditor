@@ -5,11 +5,16 @@ import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.model.Code;
@@ -74,7 +79,7 @@ public class VideoEditor {
         LogUtil.log("video meta: " + mVideoInfo.toString());
 
         addGLView();
-        initMediaCodec();
+//        initMediaCodec();
 
 //        new Thread(()->{
 //            int frameCount = 0;
@@ -110,7 +115,45 @@ public class VideoEditor {
             SurfaceTexture mainTexture = new SurfaceTexture(100);
             codec.configure(mediaFormat , new Surface(mainTexture), null ,0);
 
+            codec.setCallback(new MediaCodec.Callback() {
+                @Override
+                public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
+                    if(index < 0){
+                        return;
+                    }
 
+                    LogUtil.log("onInputBufferAvailable index = " + index);
+
+                    ByteBuffer buf = codec.getInputBuffer(index);
+                    final int readSize = mVideoExtractor.readSampleData(buf , 0);
+
+                    if(readSize > 0){
+                        codec.queueInputBuffer(index , 0 , readSize , mVideoExtractor.getSampleTime() , 0);
+
+                        //to next frame
+                        mVideoExtractor.advance();
+                    }else{
+                        codec.queueInputBuffer(index , 0 , 0 , 0 , MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                    }
+                }
+
+                @Override
+                public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index, @NonNull MediaCodec.BufferInfo info) {
+                    LogUtil.log("presentationTimeUs = " + info.presentationTimeUs);
+
+                    codec.releaseOutputBuffer(index , info.presentationTimeUs * 1000);
+                }
+
+                @Override
+                public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
+
+                }
+
+                @Override
+                public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
+
+                }
+            });
             codec.start();
         } catch (IOException e) {
             e.printStackTrace();

@@ -5,6 +5,12 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES30;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+
 import static android.opengl.GLES20.GL_LINEAR;
 import static android.opengl.GLES20.GL_TEXTURE_2D;
 import static android.opengl.GLES20.GL_TEXTURE_MAG_FILTER;
@@ -48,6 +54,21 @@ public class ShaderUtil {
     }
 
     /**
+     *  从Assets中读取shader 构建
+     *
+     * @param context
+     * @param vertexFileName
+     * @param fragmentFileName
+     * @return
+     */
+    public static int buildShaderProgramFromAssets(Context context , String vertexFileName , String fragmentFileName){
+        final String vertexSrc = readAssetFileAsText(context , vertexFileName);
+        final String fragmentSrc = readAssetFileAsText(context , fragmentFileName);
+
+        return buildShaderProgram(vertexSrc, fragmentSrc);
+    }
+
+    /**
      * 创建shader program
      *
      * @param vertexShaderCode
@@ -74,6 +95,31 @@ public class ShaderUtil {
         }
 
         return program;
+    }
+
+    /**
+     * 读取Asset目录下的文本文件
+     * @param context
+     * @param path
+     * @return
+     */
+    public static String readAssetFileAsText(final Context context ,final String path){
+        StringBuilder sb = new StringBuilder();
+        InputStream is = null;
+        try {
+            is = context.getAssets().open(path);
+            BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8 ));
+            String str;
+            while ((str = br.readLine()) != null) {
+                sb.append(str).append("\n");
+            }//end while
+            br.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            LogUtil.log(e.getMessage());
+            return null;
+        }
+        return sb.toString();
     }
 
     /**
