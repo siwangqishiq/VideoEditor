@@ -21,6 +21,7 @@ import panyi.xyz.videoeditor.model.VideoInfo;
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.MediaUtil;
 import panyi.xyz.videoeditor.view.VideoEditorGLView;
+import panyi.xyz.videoeditor.view.widget.VideoWidget;
 
 /**
  *  视频编辑核心类
@@ -54,6 +55,7 @@ public class VideoEditor {
         mContainer.removeAllViews();
 
         mGLView = new VideoEditorGLView(mContainer.getContext());
+        mGLView.setVideoInfo(mVideoInfo);
         ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT , ViewGroup.LayoutParams.MATCH_PARENT);
         mContainer.addView(mGLView , params);
     }
@@ -77,41 +79,24 @@ public class VideoEditor {
         LogUtil.log("video meta: " + mVideoInfo.toString());
 
         addGLView();
-//        initMediaCodec();
 
-//        new Thread(()->{
-//            int frameCount = 0;
-//            ByteBuffer buf = ByteBuffer.allocate(1024 * 1024);
-//            while(mVideoExtractor.readSampleData(buf , 0) >= 0){
-//                frameCount++;
-//                LogUtil.log("frameCount = " + frameCount
-//                        +" buf_size=" + buf.remaining()
-//                        +" sampleFlag = " + mVideoExtractor.getSampleFlags()
-//                        +"  时间戳 = " + (mVideoExtractor.getSampleTime() / 1000));
-//                mVideoExtractor.advance();
-//            }//end while
-//        }).start();
+        mGLView.setCallback(new VideoEditorGLView.Callback() {
+            @Override
+            public void onVideoWidgetReady(VideoEditorGLView view, VideoWidget videoWidget) {
+                initMediaCodec(videoWidget.surfaceTexture);
+            }
+        });
 
-//        if(MediaUtils.hasCodecForMime(false , mVideoInfo.mime)){
-//            mVideoExtractor.release();
-//            mVideoExtractor = null;
-//
-//            Toast.makeText(mContext , R.string.video_format_no_support , Toast.LENGTH_LONG).show();
-//            return Code.ERROR;
-//        }
-
-        // MediaUtils.hasCodecForMime(false , mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex()));
         return Code.SUCCESS;
     }
 
 
-    private void initMediaCodec(){
+    private void initMediaCodec(SurfaceTexture surfaceTexture){
         try {
             MediaCodec codec = MediaCodec.createDecoderByType(mVideoInfo.mime);
             MediaFormat mediaFormat = mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex());
-
-            SurfaceTexture mainTexture = new SurfaceTexture(100);
-            codec.configure(mediaFormat , new Surface(mainTexture), null ,0);
+//            mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE , 65536);
+            codec.configure(mediaFormat , new Surface(surfaceTexture), null ,0);
 
             codec.setCallback(new MediaCodec.Callback() {
                 @Override
@@ -119,8 +104,7 @@ public class VideoEditor {
                     if(index < 0){
                         return;
                     }
-
-//                    LogUtil.log("onInputBufferAvailable index = " + index);
+                    // LogUtil.log("onInputBufferAvailable index = " + index);
 
                     ByteBuffer buf = codec.getInputBuffer(index);
                     final int readSize = mVideoExtractor.readSampleData(buf , 0);
@@ -137,9 +121,9 @@ public class VideoEditor {
 
                 @Override
                 public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index, @NonNull MediaCodec.BufferInfo info) {
-                    // LogUtil.log("presentationTimeUs = " + info.presentationTimeUs);
-
-                    codec.releaseOutputBuffer(index , info.presentationTimeUs * 1000);
+                     //LogUtil.log("presentationTimeUs = " + info.presentationTimeUs);
+//                    codec.releaseOutputBuffer(index , info.presentationTimeUs * 1000);
+                    codec.releaseOutputBuffer(index , true);
                 }
 
                 @Override

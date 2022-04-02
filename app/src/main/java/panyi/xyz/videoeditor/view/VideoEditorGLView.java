@@ -12,6 +12,7 @@ import java.util.List;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import panyi.xyz.videoeditor.model.VideoInfo;
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.view.widget.Camera;
 import panyi.xyz.videoeditor.view.widget.IRender;
@@ -28,6 +29,22 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
     public static final int TEXTURE_SIZE = 16;
 
+    private Callback mCallback;
+
+    private VideoInfo mVideoInfo;
+
+    public VideoInfo getVideoInfo(){
+        return mVideoInfo;
+    }
+
+    public interface Callback{
+        void onVideoWidgetReady(VideoEditorGLView view , VideoWidget videoWidget);
+    }
+
+    public void setCallback(Callback mCallback) {
+        this.mCallback = mCallback;
+    }
+
     public VideoEditorGLView(Context context) {
         super(context);
         init();
@@ -38,25 +55,21 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
         init();
     }
 
+    public void setVideoInfo(VideoInfo info){
+        mVideoInfo = info;
+    }
+
     private void init(){
         setEGLContextClientVersion(3);
         setEGLConfigChooser(8, 8, 8, 8, 16, 0);
 
         setRenderer(this);
         setRenderMode(RENDERMODE_WHEN_DIRTY);
-//        setRenderMode(RENDERMODE_CONTINUOUSLY);
     }
 
     @Override
     public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
         mVideoTimeline = new VideoTimeline();
-        initTextures();
-    }
-
-    private void initTextures(){
-        int[] ids = new int[TEXTURE_SIZE];
-        GLES30.glGenTextures(TEXTURE_SIZE , ids , 0);
-
     }
 
     @Override
@@ -89,8 +102,12 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 //        IRender rectWidget = new RectWidget(this);
 //        components.add(rectWidget);
 
-        IRender videoWidget = new VideoWidget(this);
+        VideoWidget videoWidget = new VideoWidget(this);
         components.add(videoWidget);
+
+        if(mCallback != null){
+            mCallback.onVideoWidgetReady(this , videoWidget);
+        }
     }
 
     private void onInit(){
