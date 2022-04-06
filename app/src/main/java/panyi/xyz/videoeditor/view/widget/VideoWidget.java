@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.microedition.khronos.opengles.GL10;
 
+import panyi.xyz.videoeditor.model.VideoInfo;
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.ShaderUtil;
 import panyi.xyz.videoeditor.view.VideoEditorGLView;
@@ -64,13 +65,26 @@ public class VideoWidget implements IRender , SurfaceTexture.OnFrameAvailableLis
     }
 
     private float[] calFrameSize(){
-        return null;
+        VideoInfo info = contextView.getVideoInfo();
+        float width = info.width;
+        float height = info.height;
+
+        float[] result = new float[2];
+        if(width >= height){
+            result[0] = contextView.camera.viewWidth;
+            result[1] = result[0] / (width / height);
+        }else{
+            result[1] = contextView.camera.viewHeight;
+            result[0] = result[1] * (width / height);
+        }
+        return result;
     }
 
     @Override
     public void init() {
-        float viewWidth = 400.0f;
-        float viewHeight = 400.0f;
+        float[] size = calFrameSize();
+        float viewWidth = size[0];
+        float viewHeight = size[1];
         position = new float[]{
                 0.0f , 0.0f ,
                 viewWidth, 0.0f,
