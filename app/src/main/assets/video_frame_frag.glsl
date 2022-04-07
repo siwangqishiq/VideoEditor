@@ -11,15 +11,18 @@ in vec2 vUv;
 out vec4 out_color;
 
 void main(){
-    vec3 origin = texture(videoTexture , vUv).xyz;
-
     const float storken = 20.0f;
 
-    if(abs(coord.x - coord.y) <= storken || abs(coord.y + coord.x - 400.0f) <= storken){
-        out_color = vec4(0.0f , 0.0f ,0.0f, 1.0f);
-    }else{
-        vec3 origin = texture(videoTexture , vUv).xyz;
-        out_color = vec4(origin.x , origin.y ,origin.z , 1.0f);
-    }
+//    if(abs(coord.x - coord.y) <= storken || abs(coord.y + coord.x - 400.0f) <= storken){
+//        out_color = vec4(0.0f , 0.0f ,0.0f, 1.0f);
+//    }else{
+//        vec3 origin = texture(videoTexture , vUv).xyz;
+//        out_color = vec4(origin.x , origin.y ,origin.z , 1.0f);
+//    }
+
+    vec3 origin = texture(videoTexture , vUv).xyz;
+    out_color = vec4(origin.x , origin.y ,origin.z , 1.0f);
+
+//    out_color =vec4(1.0f , 0.0f ,0.0f  ,1.0f);
 }
 

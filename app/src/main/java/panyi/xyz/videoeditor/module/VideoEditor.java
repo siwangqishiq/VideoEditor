@@ -21,6 +21,7 @@ import panyi.xyz.videoeditor.model.VideoInfo;
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.MediaUtil;
 import panyi.xyz.videoeditor.view.VideoEditorGLView;
+import panyi.xyz.videoeditor.view.widget.VideoFrameWidget;
 import panyi.xyz.videoeditor.view.widget.VideoWidget;
 
 /**
@@ -37,12 +38,18 @@ public class VideoEditor {
     public VideoInfo mVideoInfo;//视频meta信息
     public MediaExtractor mVideoExtractor;
 
+    public MediaCodec mVideoCodec;
+
     public void initView(ViewGroup container){
         mContainer = container;
         mContext = mContainer.getContext();
     }
 
     public void free(){
+        if(mVideoCodec != null){
+            mVideoCodec.release();
+        }
+
         if(mVideoExtractor != null){
             mVideoExtractor.release();
         }
@@ -82,8 +89,8 @@ public class VideoEditor {
 
         mGLView.setCallback(new VideoEditorGLView.Callback() {
             @Override
-            public void onVideoWidgetReady(VideoEditorGLView view, VideoWidget videoWidget) {
-                initMediaCodec(videoWidget.surfaceTexture);
+            public void onVideoWidgetReady(VideoEditorGLView view) {
+                initMediaCodec(view);
             }
         });
 
@@ -91,22 +98,27 @@ public class VideoEditor {
     }
 
 
-    private void initMediaCodec(SurfaceTexture surfaceTexture){
+    private void initMediaCodec(VideoEditorGLView view){
         try {
-            MediaCodec codec = MediaCodec.createDecoderByType(mVideoInfo.mime);
+            mVideoCodec = MediaCodec.createDecoderByType(mVideoInfo.mime);
             MediaFormat mediaFormat = mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex());
 //            mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE , 65536);
-            codec.configure(mediaFormat , new Surface(surfaceTexture), null ,0);
+//            mVideoCodec.configure(mediaFormat , new Surface(videoWidget.surfaceTexture), null ,0);
+            mVideoCodec.configure(mediaFormat , new Surface(view.videoFrameWidget.fetchNextSurfaceTexture()),
+                    null ,0);
 
-            codec.setCallback(new MediaCodec.Callback() {
+            mVideoCodec.setCallback(new MediaCodec.Callback() {
+                private int readFrameCount = 0;
+
                 @Override
                 public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
                     if(index < 0){
                         return;
                     }
                     // LogUtil.log("onInputBufferAvailable index = " + index);
-
                     ByteBuffer buf = codec.getInputBuffer(index);
+
+                    LogUtil.log("read sample time: " + mVideoExtractor.getSampleTime());
                     final int readSize = mVideoExtractor.readSampleData(buf , 0);
 
                     if(readSize > 0){
@@ -120,10 +132,20 @@ public class VideoEditor {
                 }
 
                 @Override
-                public void onOutputBufferAvailable(@NonNull MediaCodec codec, int index, @NonNull MediaCodec.BufferInfo info) {
-                     //LogUtil.log("presentationTimeUs = " + info.presentationTimeUs);
+                public void onOutputBufferAvailable(@NonNull MediaCodec codec, int outputBufferId, @NonNull MediaCodec.BufferInfo info) {
+                    LogUtil.log("presentationTimeUs = " + info.presentationTimeUs +"   bufferId = "
+                            + outputBufferId +" keyframe: "+  (info.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME));
+
 //                    codec.releaseOutputBuffer(index , info.presentationTimeUs * 1000);
-                    codec.releaseOutputBuffer(index , true);
+//                    final ByteBuffer outputBuffer = codec.getOutputBuffer(outputBufferId);
+                    codec.releaseOutputBuffer(outputBufferId , true);
+
+                    readFrameCount++;
+                    codec.setOutputSurface(new Surface(view.videoFrameWidget.fetchNextSurfaceTexture()));
+                    if(readFrameCount >= VideoFrameWidget.TEXTURE_COUNT){
+                        codec.stop();
+                        LogUtil.log("decode frame : " + readFrameCount +" media codec stop");
+                    }
                 }
 
                 @Override
@@ -136,7 +158,7 @@ public class VideoEditor {
 
                 }
             });
-            codec.start();
+            mVideoCodec.start();
         } catch (IOException e) {
             e.printStackTrace();
         }

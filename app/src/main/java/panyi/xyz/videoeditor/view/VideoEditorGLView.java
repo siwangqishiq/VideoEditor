@@ -17,6 +17,7 @@ import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.view.widget.Camera;
 import panyi.xyz.videoeditor.view.widget.IRender;
 import panyi.xyz.videoeditor.view.widget.RectWidget;
+import panyi.xyz.videoeditor.view.widget.VideoFrameWidget;
 import panyi.xyz.videoeditor.view.widget.VideoTimeline;
 import panyi.xyz.videoeditor.view.widget.VideoWidget;
 
@@ -38,7 +39,7 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     }
 
     public interface Callback{
-        void onVideoWidgetReady(VideoEditorGLView view , VideoWidget videoWidget);
+        void onVideoWidgetReady(VideoEditorGLView view);
     }
 
     public void setCallback(Callback mCallback) {
@@ -90,8 +91,7 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     private float screenWidth;
     private float screenHeight;
 
-    private int shaderProgramId;
-    private int vao;
+    public VideoFrameWidget videoFrameWidget;
 
     private List<IRender> components = new ArrayList<IRender>(8);
 
@@ -102,11 +102,14 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 //        IRender rectWidget = new RectWidget(this);
 //        components.add(rectWidget);
 
-        VideoWidget videoWidget = new VideoWidget(this);
-        components.add(videoWidget);
+//        VideoWidget videoWidget = new VideoWidget(this);
+//        components.add(videoWidget);
+
+        videoFrameWidget = new VideoFrameWidget(this);
+        components.add(videoFrameWidget);
 
         if(mCallback != null){
-            mCallback.onVideoWidgetReady(this , videoWidget);
+            mCallback.onVideoWidgetReady(this );
         }
     }
 
