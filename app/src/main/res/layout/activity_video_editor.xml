@@ -20,5 +20,12 @@
         app:layout_constraintTop_toBottomOf="@id/preview_panel"
         android:layout_height="0dp"
         android:layout_width="match_parent"
-        />
+        >
+        <Button
+            android:id="@+id/btn_test"
+            android:text="test"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            />
+    </FrameLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

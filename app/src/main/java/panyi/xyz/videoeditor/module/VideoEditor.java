@@ -40,12 +40,17 @@ public class VideoEditor {
 
     public MediaCodec mVideoCodec;
 
+    private int readFrameCount = 0;
+
+    private boolean isRunning = false;
+
     public void initView(ViewGroup container){
         mContainer = container;
         mContext = mContainer.getContext();
     }
 
     public void free(){
+        isRunning = false;
         if(mVideoCodec != null){
             mVideoCodec.release();
         }
@@ -97,32 +102,34 @@ public class VideoEditor {
         return Code.SUCCESS;
     }
 
-
     private void initMediaCodec(VideoEditorGLView view){
         try {
             mVideoCodec = MediaCodec.createDecoderByType(mVideoInfo.mime);
             MediaFormat mediaFormat = mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex());
 //            mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE , 65536);
 //            mVideoCodec.configure(mediaFormat , new Surface(videoWidget.surfaceTexture), null ,0);
-            mVideoCodec.configure(mediaFormat , new Surface(view.videoFrameWidget.fetchNextSurfaceTexture()),
+            mVideoCodec.configure(mediaFormat , view.videoFrameCopyWidget.getVideoSurface(),
                     null ,0);
 
             mVideoCodec.setCallback(new MediaCodec.Callback() {
-                private int readFrameCount = 0;
-
                 @Override
                 public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
+                    if(!isRunning){
+                        return;
+                    }
+
                     if(index < 0){
                         return;
                     }
                     // LogUtil.log("onInputBufferAvailable index = " + index);
                     ByteBuffer buf = codec.getInputBuffer(index);
 
-                    LogUtil.log("read sample time: " + mVideoExtractor.getSampleTime());
+                    LogUtil.i("read sample time: " + mVideoExtractor.getSampleTime());
                     final int readSize = mVideoExtractor.readSampleData(buf , 0);
 
                     if(readSize > 0){
                         codec.queueInputBuffer(index , 0 , readSize , mVideoExtractor.getSampleTime() , 0);
+
 
                         //to next frame
                         mVideoExtractor.advance();
@@ -133,34 +140,52 @@ public class VideoEditor {
 
                 @Override
                 public void onOutputBufferAvailable(@NonNull MediaCodec codec, int outputBufferId, @NonNull MediaCodec.BufferInfo info) {
-                    LogUtil.log("presentationTimeUs = " + info.presentationTimeUs +"   bufferId = "
+                    if(!isRunning){
+                        return;
+                    }
+
+                    LogUtil.i("presentationTimeUs = " + info.presentationTimeUs +"   bufferId = "
                             + outputBufferId +" keyframe: "+  (info.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME));
 
 //                    codec.releaseOutputBuffer(index , info.presentationTimeUs * 1000);
 //                    final ByteBuffer outputBuffer = codec.getOutputBuffer(outputBufferId);
-                    codec.releaseOutputBuffer(outputBufferId , true);
 
-                    readFrameCount++;
-                    codec.setOutputSurface(new Surface(view.videoFrameWidget.fetchNextSurfaceTexture()));
-                    if(readFrameCount >= VideoFrameWidget.TEXTURE_COUNT){
-                        codec.stop();
-                        LogUtil.log("decode frame : " + readFrameCount +" media codec stop");
-                    }
+//                    codec.releaseOutputBuffer(outputBufferId , true);
+
+                    codec.releaseOutputBuffer(outputBufferId , info.presentationTimeUs);
+
+//                    view.videoFrameWidget.fetchNextSurfaceTexture();
+//                     codec.setOutputSurface(view.videoFrameWidget.fetchNextSurfaceTexture());
+                    // readFrameCount++;
+
+//                    if(readFrameCount >= VideoFrameWidget.TEXTURE_COUNT){
+//                        // codec.stop();
+//                        LogUtil.log("decode frame : " + readFrameCount +" media codec stop");
+//                        view.requestRender();
+//
+//                        readFrameCount = 0;
+//                    }
                 }
 
                 @Override
                 public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
-
+                    LogUtil.i("decode error " + e.toString());
                 }
 
                 @Override
                 public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
-
+                    LogUtil.i("decode onOutputFormatChanged " + format);
                 }
             });
             mVideoCodec.start();
+            isRunning = true;
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void decodeNextFrame(){
+        readFrameCount = 0;
+        mVideoCodec.start();
     }
 }

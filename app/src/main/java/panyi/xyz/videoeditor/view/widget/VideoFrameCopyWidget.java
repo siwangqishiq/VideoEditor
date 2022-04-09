@@ -9,8 +9,6 @@ import android.view.Surface;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.microedition.khronos.opengles.GL10;
@@ -20,7 +18,7 @@ import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.ShaderUtil;
 import panyi.xyz.videoeditor.view.VideoEditorGLView;
 
-public class VideoFrameWidget implements IRender , SurfaceTexture.OnFrameAvailableListener {
+public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAvailableListener {
     private VideoEditorGLView contextView;
 
     private float[] position;
@@ -35,65 +33,50 @@ public class VideoFrameWidget implements IRender , SurfaceTexture.OnFrameAvailab
 
     private int matrixUniformLocation;
 
-    private SparseArray<SurfaceTexture> surfaceTextures;
-
-    private Map<SurfaceTexture , Surface> textureToSurface = new HashMap<SurfaceTexture , Surface>();
-
     private AtomicInteger needUpdateTexture = new AtomicInteger(0);
 
     public static final int TEXTURE_COUNT = 32;
 
-    private int[] textureIds;
+    private int videoOesTextureId;
+
+    private SurfaceTexture surfaceTexture;
 
     private int index = 0;
 
-    public VideoFrameWidget(VideoEditorGLView view){
+    private Surface videoSurface;
+
+    public VideoFrameCopyWidget(VideoEditorGLView view){
         contextView = view;
-        prepareOesTextureSurface();
+        createOesTexture();
     }
-
-    public Surface fetchNextSurfaceTexture(){
-        final SurfaceTexture result = surfaceTextures.get(textureIds[index]);
-        index++;
-        index = index % textureIds.length;
-
-        LogUtil.log("fetch next surface index: " + index);
-
-        Surface surface = textureToSurface.get(result);
-        if(surface == null){
-            surface = new Surface(result);
-            textureToSurface.put(result , surface);
-        }
-        return surface;
-    }
-
-//    public Surface fetchNextSurfaceTexture2(){
-//        final SurfaceTexture result = surfaceTextures.get(textureIds[index]);
-//        Surface surface = textureToSurface.get(result);
-//        if(surface == null){
-//            surface = new Surface(result);
-//            textureToSurface.put(result , surface);
-//        }
-//        return surface;
-//    }
-
 
     /**
      * 创建oes纹理
      * @return
      */
     public void createOesTexture(){
-        textureIds = new int[TEXTURE_COUNT];
+        int textureIds[] = new int[1];
 
         GLES30.glGenTextures(textureIds.length, textureIds, 0);
-        for(int textureId : textureIds){
-            GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textureId);
-            GLES30.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
-            GLES30.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
-            GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
-            GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
-        }//end for each
+        videoOesTextureId = textureIds[0];
+
+        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, videoOesTextureId);
+        GLES30.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR);
+        GLES30.glTexParameterf(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR);
+        GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
+        GLES30.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
+
         GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, 0);
+
+        surfaceTexture = new SurfaceTexture(videoOesTextureId);
+        surfaceTexture.setOnFrameAvailableListener(this);
+    }
+
+    public Surface getVideoSurface(){
+        if(videoSurface == null){
+            videoSurface = new Surface(surfaceTexture);
+        }
+        return videoSurface;
     }
 
     private float[] calFrameSize(){
@@ -166,53 +149,30 @@ public class VideoFrameWidget implements IRender , SurfaceTexture.OnFrameAvailab
 
     }
 
-    /**
-     * 创建Video 纹理
-     *
-     */
-    private void prepareOesTextureSurface(){
-        createOesTexture();
-        surfaceTextures = new SparseArray<SurfaceTexture>(textureIds.length);
-
-        for(int id : textureIds){
-            surfaceTextures.put(id , new SurfaceTexture(id));
-            surfaceTextures.get(id).setOnFrameAvailableListener(this);
-        }//end for each
-    }
-
     @Override
     public void render() {
-        float size = 120.0f;
+        float size = contextView.camera.viewWidth;
         float left = 0;
         float top = 0;
         float padding = 10.0f;
 
-        for(int i = 0 ; i < textureIds.length;i++){
-            if(left + size > contextView.camera.viewWidth){
-                left = 0.0f;
-                top += (size + padding);
-            }
-
-            renderFrame(left , top , size , size , textureIds[i]);
-            left += (size + padding);
-        }//end for each
+        renderFrame(left , top , size , size );
     }
 
-    public void renderFrame(float left , float top , float width , float height , int textureId){
-        SurfaceTexture surfaceTexture = surfaceTextures.get(textureId);
-        if(surfaceTexture == null)
-            return;
+    public void renderFrame(float left , float top , float width , float height){
+        // LogUtil.log("render frame");
+
         surfaceTexture.updateTexImage();
 
-        positionBuf.position(0);
-        positionBuf.put(left );
-        positionBuf.put(top);
-        positionBuf.put(left + width);
-        positionBuf.put(top);
-        positionBuf.put(left + width);
-        positionBuf.put(top + height);
-        positionBuf.put(left);
-        positionBuf.put(top + height);
+//        positionBuf.position(0);
+//        positionBuf.put(left );
+//        positionBuf.put(top);
+//        positionBuf.put(left + width);
+//        positionBuf.put(top);
+//        positionBuf.put(left + width);
+//        positionBuf.put(top + height);
+//        positionBuf.put(left);
+//        positionBuf.put(top + height);
 
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , posBufId);
         positionBuf.position(0);
@@ -224,7 +184,6 @@ public class VideoFrameWidget implements IRender , SurfaceTexture.OnFrameAvailab
         GLES30.glEnableVertexAttribArray(0);
         GLES30.glEnableVertexAttribArray(1);
 
-//        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , posBufId);
         positionBuf.position(0);
         GLES30.glVertexAttribPointer(0, 2 , GLES30.GL_FLOAT , false , 2 * Float.BYTES , positionBuf);
 
@@ -235,7 +194,7 @@ public class VideoFrameWidget implements IRender , SurfaceTexture.OnFrameAvailab
                 contextView.camera.getMatrix(), 0);
 
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
-        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES , textureId);
+        GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES , videoOesTextureId);
 
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN , 0 , 4);
 
@@ -251,11 +210,14 @@ public class VideoFrameWidget implements IRender , SurfaceTexture.OnFrameAvailab
         bufferIds[1] = textureBufId;
         GLES30.glDeleteBuffers(2 , bufferIds , 0);
 
-        GLES30.glDeleteBuffers(textureIds.length , textureIds , 0);
+        int oesTextureIds[] = new int[1];
+        oesTextureIds[0] = videoOesTextureId;
+        GLES30.glDeleteBuffers(oesTextureIds.length , oesTextureIds , 0);
     }
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
+        LogUtil.log(" onFrameAvailable");
          contextView.requestRender();
     }
 }//end class

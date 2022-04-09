@@ -1,11 +1,28 @@
 package panyi.xyz.videoeditor.util;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 /**
  *  LogUtil
  */
 public final class LogUtil {
+    private static Logger logger = Logger.getLogger(LogUtil.class.getName());
+
+    public static void i(final String msg){
+        logger.log(Level.INFO , genLogMessage(genLogMessage(msg)));
+    }
+
+    public static void w(final String msg){
+        logger.log(Level.WARNING , genLogMessage(genLogMessage(msg)));
+    }
+
+    private static String genLogMessage(final String msg){
+        return Thread.currentThread() + "  " + msg;
+    }
+
     public static void log(final String msg){
-        System.out.println(msg);
+        System.out.println(genLogMessage(msg));
     }
 
     public static void formatLog(String template , Object ... params){

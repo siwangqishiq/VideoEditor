@@ -69,6 +69,10 @@ public class VideoEditorActivity extends AppCompatActivity {
     private void initView(){
         mVideoEditor = new VideoEditor();
         mVideoEditor.initView((ViewGroup)findViewById(R.id.preview_panel));
+
+        findViewById(R.id.btn_test).setOnClickListener((v)->{
+            //mVideoEditor.decodeNextFrame();
+        });
     }
 
     /**

@@ -17,6 +17,7 @@ import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.view.widget.Camera;
 import panyi.xyz.videoeditor.view.widget.IRender;
 import panyi.xyz.videoeditor.view.widget.RectWidget;
+import panyi.xyz.videoeditor.view.widget.VideoFrameCopyWidget;
 import panyi.xyz.videoeditor.view.widget.VideoFrameWidget;
 import panyi.xyz.videoeditor.view.widget.VideoTimeline;
 import panyi.xyz.videoeditor.view.widget.VideoWidget;
@@ -91,7 +92,9 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     private float screenWidth;
     private float screenHeight;
 
-    public VideoFrameWidget videoFrameWidget;
+//    public VideoFrameWidget videoFrameWidget;
+
+    public VideoFrameCopyWidget videoFrameCopyWidget;
 
     private List<IRender> components = new ArrayList<IRender>(8);
 
@@ -105,8 +108,11 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 //        VideoWidget videoWidget = new VideoWidget(this);
 //        components.add(videoWidget);
 
-        videoFrameWidget = new VideoFrameWidget(this);
-        components.add(videoFrameWidget);
+//        videoFrameWidget = new VideoFrameWidget(this);
+//        components.add(videoFrameWidget);
+
+        videoFrameCopyWidget = new VideoFrameCopyWidget(this);
+        components.add(videoFrameCopyWidget);
 
         if(mCallback != null){
             mCallback.onVideoWidgetReady(this );
