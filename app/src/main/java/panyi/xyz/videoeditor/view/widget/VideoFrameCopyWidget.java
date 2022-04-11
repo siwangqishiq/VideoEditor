@@ -44,6 +44,8 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
 
     private Surface videoSurface;
 
+    private int renderBufferId;
+
     //视频帧 显示 纹理ID
     private int videoFrameTextureId;
 
@@ -205,9 +207,22 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
     private void initFrameBuffer(){
         int frameBufIds[] = new int[1];
         GLES30.glGenFramebuffers(frameBufIds.length , frameBufIds , 0);
+        frameBufferId = frameBufIds[0];
 
+        int renderBufIds[] = new int[1];
+        GLES30.glGenRenderbuffers(1 , renderBufIds , 0);
+        renderBufferId = renderBufIds[0];
+        GLES30.glBindRenderbuffer(GLES30.GL_RENDERBUFFER , renderBufferId);
+        GLES30.glRenderbufferStorage(GLES30.GL_RENDERBUFFER , GLES30.GL_DEPTH24_STENCIL8 ,
+                (int)contextView.camera.viewWidth , (int)contextView.camera.viewHeight);
+        GLES30.glBindRenderbuffer(GLES30.GL_RENDERBUFFER , 0);
 
-        frameBufferId = 0;
+        GLES30.glBindFramebuffer(GLES20.GL_FRAMEBUFFER , frameBufferId);
+        GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0 ,
+                GLES30.GL_TEXTURE_2D , videoFrameTextureId , 0);
+        GLES30.glFramebufferRenderbuffer(GLES30.GL_FRAMEBUFFER , GLES30.GL_DEPTH_STENCIL_ATTACHMENT ,
+                GLES30.GL_RENDERBUFFER , renderBufferId);
+        GLES30.glBindFramebuffer(GLES20.GL_FRAMEBUFFER , 0);
     }
 
     @Override
@@ -243,7 +258,17 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
      *
      */
     private void copyOesVideoToTexture(){
+        surfaceTexture.updateTexImage();
 
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , frameBufferId);
+        if(GLES30.glCheckFramebufferStatus(GLES30.GL_FRAMEBUFFER) != GLES30.GL_FRAMEBUFFER_COMPLETE){
+            LogUtil.w(frameBufferId + " framebuffer is Error!");
+            GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , 0);
+            return;
+        }
+
+
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , 0);
     }
 
     public void renderFrame(float left , float top , float width , float height){
@@ -294,7 +319,7 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
         int[] bufferIds = new int[3];
         bufferIds[0] = posBufId;
         bufferIds[1] = textureBufId;
-        bufferIds[3] = videoFramePositionBufferId;
+        bufferIds[2] = videoFramePositionBufferId;
         GLES30.glDeleteBuffers(2 , bufferIds , 0);
 
         int oesTextureIds[] = new int[1];
