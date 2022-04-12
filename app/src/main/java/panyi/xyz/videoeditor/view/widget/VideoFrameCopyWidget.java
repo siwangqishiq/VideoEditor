@@ -30,6 +30,7 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
     private int programId;
 
     private int matrixUniformLocation;
+    private int videoTextureMatrixLoc;
 
     private int videoFrameProgramId;
     private int videoFramePositionBufferId;
@@ -37,6 +38,8 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
     private int videoOesTextureId;
 
     private SurfaceTexture surfaceTexture;
+
+    private float[] originVideoTextureMatrix = new float[4 * 4];
 
     private int index = 0;
 
@@ -125,8 +128,12 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
     @Override
     public void init() {
         float[] size = calFrameSize();
-        float viewWidth = size[0];
-        float viewHeight = size[1];
+//        float viewWidth = size[0];
+//        float viewHeight = size[1];
+
+        float viewWidth = contextView.camera.viewWidth;
+        float viewHeight = contextView.camera.viewHeight;
+
         float position[] = new float[]{
                 0.0f , 0.0f ,
                 viewWidth, 0.0f,
@@ -180,10 +187,12 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
                 "video_frame_cube_vert.glsl",
                 "video_frame_cube_frag.glsl");
         LogUtil.formatLog("videoFrameProgramId shader program Id = %d" , videoFrameProgramId);
+        videoTextureMatrixLoc =  GLES30.glGetUniformLocation(videoFrameProgramId , "uTextureMatrix");
+
         float x = 0;
         float y = 0;
-        float width = 200;
-        float height = 200;
+        float width = viewWidth;
+        float height = viewHeight;
         float framePosition[] = {
                 x , y ,
                 x +width, y,
@@ -227,7 +236,6 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
 
     @Override
     public void render() {
-        // renderFrame(left , top , size , size);
         copyOesVideoToTexture();
         renderVideoFrameCube();
     }
@@ -247,6 +255,9 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
         GLES30.glUniformMatrix3fv(matrixUniformLocation , 1 , false ,
                 contextView.camera.getMatrix(), 0);
 
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D , videoFrameTextureId);
+
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN , 0 , 4);
 
         GLES30.glDisableVertexAttribArray(0);
@@ -259,50 +270,36 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
      */
     private void copyOesVideoToTexture(){
         surfaceTexture.updateTexImage();
+        surfaceTexture.getTransformMatrix(originVideoTextureMatrix);
+//        LogUtil.logArray(matrix);
 
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , frameBufferId);
         if(GLES30.glCheckFramebufferStatus(GLES30.GL_FRAMEBUFFER) != GLES30.GL_FRAMEBUFFER_COMPLETE){
-            LogUtil.w(frameBufferId + " framebuffer is Error!");
+            LogUtil.log(frameBufferId + " framebuffer is Error!");
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , 0);
             return;
         }
 
-
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , 0);
-    }
-
-    public void renderFrame(float left , float top , float width , float height){
-        // LogUtil.log("render frame");
-        surfaceTexture.updateTexImage();
-
-//        positionBuf.position(0);
-//        positionBuf.put(left );
-//        positionBuf.put(top);
-//        positionBuf.put(left + width);
-//        positionBuf.put(top);
-//        positionBuf.put(left + width);
-//        positionBuf.put(top + height);
-//        positionBuf.put(left);
-//        positionBuf.put(top + height);
-
-        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , posBufId);
-        positionBuf.position(0);
-        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER , 8 * Float.BYTES , positionBuf , GLES30.GL_STATIC_DRAW);
-        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , 0);
+        GLES30.glEnable(GLES30.GL_DEPTH);
+        GLES30.glClearColor(1.0f , 1.0f ,1.0f , 1.0f);
+        GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
         GLES30.glUseProgram(programId);
 
         GLES30.glEnableVertexAttribArray(0);
         GLES30.glEnableVertexAttribArray(1);
 
-        positionBuf.position(0);
-        GLES30.glVertexAttribPointer(0, 2 , GLES30.GL_FLOAT , false , 2 * Float.BYTES , positionBuf);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , posBufId);
+        GLES30.glVertexAttribPointer(0, 2 , GLES30.GL_FLOAT , false , 2 * Float.BYTES , 0);
 
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , textureBufId);
         GLES30.glVertexAttribPointer(1, 2 , GLES30.GL_FLOAT , false , 2 * Float.BYTES , 0);
 
         GLES30.glUniformMatrix3fv(matrixUniformLocation , 1 , false ,
                 contextView.camera.getMatrix(), 0);
+
+        GLES30.glUniformMatrix4fv(videoTextureMatrixLoc , 1 , false ,
+                originVideoTextureMatrix, 0);
 
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
         GLES30.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES , videoOesTextureId);
@@ -311,6 +308,8 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
 
         GLES30.glDisableVertexAttribArray(0);
         GLES30.glDisableVertexAttribArray(1);
+
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , 0);
     }
 
     @Override
@@ -333,7 +332,7 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-        LogUtil.log(" onFrameAvailable");
+        // LogUtil.log(" onFrameAvailable");
          contextView.requestRender();
     }
 }//end class

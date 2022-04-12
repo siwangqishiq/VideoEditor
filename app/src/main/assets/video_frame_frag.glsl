@@ -11,8 +11,8 @@ in vec2 vUv;
 out vec4 out_color;
 
 void main(){
-    const float storken = 20.0f;
-
+//    const float storken = 20.0f;
+//
 //    if(abs(coord.x - coord.y) <= storken || abs(coord.y + coord.x - 400.0f) <= storken){
 //        out_color = vec4(0.0f , 0.0f ,0.0f, 1.0f);
 //    }else{

@@ -25,6 +25,14 @@ public final class LogUtil {
         System.out.println(genLogMessage(msg));
     }
 
+    public static void logArray(float[] matrix){
+        System.out.print("[ ");
+        for(float v : matrix){
+            System.out.print( v+" ");
+        }
+        System.out.println("]");
+    }
+
     public static void formatLog(String template , Object ... params){
         String msg = String.format(template , params);
         log(msg);

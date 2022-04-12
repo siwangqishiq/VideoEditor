@@ -23,10 +23,10 @@ public class MainActivity extends AppCompatActivity {
             VideoEditorActivity.start(MainActivity.this);
         });
 
-        for(int i = 0 ; i < MediaCodecList.getCodecCount() ; i++){
-            MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
-            LogUtil.log(info.getName() +"  " +info.getSupportedTypes() + " " + info.toString());
-        }
+//        for(int i = 0 ; i < MediaCodecList.getCodecCount() ; i++){
+//            MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
+            // LogUtil.log(info.getName() +"  " +info.getSupportedTypes() + " " + info.toString());
+//        }
     }
 
     private void requestPermission(){
