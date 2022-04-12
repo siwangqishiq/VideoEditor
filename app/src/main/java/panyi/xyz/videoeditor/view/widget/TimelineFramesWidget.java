@@ -10,7 +10,6 @@ import android.view.Surface;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.microedition.khronos.opengles.GL10;
 
@@ -19,11 +18,12 @@ import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.ShaderUtil;
 import panyi.xyz.videoeditor.view.VideoEditorGLView;
 
-public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAvailableListener {
+public class TimelineFramesWidget implements IRender , SurfaceTexture.OnFrameAvailableListener {
     private VideoEditorGLView contextView;
     private FloatBuffer positionBuf;
-
     private FloatBuffer textureBuf;
+
+    private final int FRAME_SIZE = 32;
 
     private int posBufId;
     private int textureBufId;
@@ -43,19 +43,52 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
 
     private int index = 0;
 
-    private int frameBufferId;
-
     private Surface videoSurface;
-
-    private int renderBufferId;
 
     //视频帧 显示 纹理ID
     private int videoFrameTextureId;
 
-    public VideoFrameCopyWidget(VideoEditorGLView view){
+    public static class RenderCube{
+        int textureId;
+        int frameBufferId;
+        float x;
+        float y;
+        float width;
+        float height;
+    }
+
+    private SparseArray<RenderCube> renderCubeList = new SparseArray<RenderCube>(FRAME_SIZE);
+
+    public TimelineFramesWidget(VideoEditorGLView view){
         contextView = view;
         createOesTexture();
+        initRenderCubes();
+
         createVideoFrameTexture();
+    }
+
+    private void initRenderCubes(){
+        renderCubeList.clear();
+
+        float x = 0;
+        float y= 0;
+        float width = 200;
+        float height = 200;
+
+        for(int i = 0 ; i < FRAME_SIZE ; i ++){
+            RenderCube renderCube = new RenderCube();
+            renderCube.x = x;
+            renderCube.y = y;
+            renderCube.width = width;
+            renderCube.height = height;
+            renderCubeList.put(i , renderCube);
+
+            x += width;
+            if(x >= contextView.camera.viewWidth - width){
+                x = 0;
+                y += height;
+            }
+        }
     }
 
     /**
@@ -85,20 +118,25 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
      *
      */
     private void createVideoFrameTexture(){
-        int textureIds[] = new int[1];
+        int textureIds[] = new int[renderCubeList.size()];
         GLES30.glGenTextures(textureIds.length, textureIds, 0);
 
-        videoFrameTextureId = textureIds[0];
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, videoFrameTextureId);
-        GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
-        GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
-        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+        for(int i = 0 ; i < textureIds.length ; i++){
+            int textureId = textureIds[i];
 
-        GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D , 0 , GLES30.GL_RGBA ,
-                (int)contextView.camera.viewWidth,
-                (int)contextView.camera.viewHeight ,
-                0 , GLES30.GL_RGBA , GLES30.GL_UNSIGNED_BYTE , null);
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, textureId);
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MIN_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameterf(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_MAG_FILTER, GLES30.GL_LINEAR);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_S, GLES30.GL_CLAMP_TO_EDGE);
+            GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D, GLES30.GL_TEXTURE_WRAP_T, GLES30.GL_CLAMP_TO_EDGE);
+
+            GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D , 0 , GLES30.GL_RGBA ,
+                    (int)contextView.camera.viewWidth,
+                    (int)contextView.camera.viewHeight ,
+                    0 , GLES30.GL_RGBA , GLES30.GL_UNSIGNED_BYTE , null);
+            renderCubeList.get(i).textureId = textureId;
+        }//end for i
+
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, 0);
     }
 
@@ -109,28 +147,8 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
         return videoSurface;
     }
 
-    private float[] calFrameSize(){
-        VideoInfo info = contextView.getVideoInfo();
-        float width = info.width;
-        float height = info.height;
-
-        float[] result = new float[2];
-        if(width >= height){
-            result[0] = contextView.camera.viewWidth;
-            result[1] = result[0] / (width / height);
-        }else{
-            result[1] = contextView.camera.viewHeight;
-            result[0] = result[1] * (width / height);
-        }
-        return result;
-    }
-
     @Override
     public void init() {
-        float[] size = calFrameSize();
-//        float viewWidth = size[0];
-//        float viewHeight = size[1];
-
         float viewWidth = contextView.camera.viewWidth;
         float viewHeight = contextView.camera.viewHeight;
 
@@ -140,13 +158,11 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
                 viewWidth , viewHeight,
                 0.0f , viewHeight
         };
-
         positionBuf = ByteBuffer.allocateDirect(position.length * Float.BYTES)
                 .order(ByteOrder.nativeOrder())
                 .asFloatBuffer()
                 .put(position);
         positionBuf.position(0);
-
 
         int[] bufferIds = new int[3];
         GLES30.glGenBuffers(bufferIds.length , bufferIds , 0);
@@ -214,41 +230,69 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
     }
 
     private void initFrameBuffer(){
-        int frameBufIds[] = new int[1];
+        int frameBufIds[] = new int[renderCubeList.size()];
         GLES30.glGenFramebuffers(frameBufIds.length , frameBufIds , 0);
-        frameBufferId = frameBufIds[0];
 
-        int renderBufIds[] = new int[1];
-        GLES30.glGenRenderbuffers(1 , renderBufIds , 0);
-        renderBufferId = renderBufIds[0];
-        GLES30.glBindRenderbuffer(GLES30.GL_RENDERBUFFER , renderBufferId);
-        GLES30.glRenderbufferStorage(GLES30.GL_RENDERBUFFER , GLES30.GL_DEPTH24_STENCIL8 ,
-                (int)contextView.camera.viewWidth , (int)contextView.camera.viewHeight);
-        GLES30.glBindRenderbuffer(GLES30.GL_RENDERBUFFER , 0);
+        for(int i = 0 ; i < renderCubeList.size() ;i++){
+            int frameBufferId = frameBufIds[i];
+            RenderCube renderCube =renderCubeList.get(i);
+            renderCube.frameBufferId = frameBufferId;
 
-        GLES30.glBindFramebuffer(GLES20.GL_FRAMEBUFFER , frameBufferId);
-        GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0 ,
-                GLES30.GL_TEXTURE_2D , videoFrameTextureId , 0);
-        GLES30.glFramebufferRenderbuffer(GLES30.GL_FRAMEBUFFER , GLES30.GL_DEPTH_STENCIL_ATTACHMENT ,
-                GLES30.GL_RENDERBUFFER , renderBufferId);
+            int renderBufIds[] = new int[1];
+            GLES30.glGenRenderbuffers(1 , renderBufIds , 0);
+            int renderBufferId = renderBufIds[0];
+            GLES30.glBindRenderbuffer(GLES30.GL_RENDERBUFFER , renderBufferId);
+            GLES30.glRenderbufferStorage(GLES30.GL_RENDERBUFFER , GLES30.GL_DEPTH24_STENCIL8 ,
+                    (int)contextView.camera.viewWidth , (int)contextView.camera.viewHeight);
+            GLES30.glBindRenderbuffer(GLES30.GL_RENDERBUFFER , 0);
+
+            GLES30.glBindFramebuffer(GLES20.GL_FRAMEBUFFER , renderCube.frameBufferId);
+            GLES30.glFramebufferTexture2D(GLES30.GL_FRAMEBUFFER, GLES30.GL_COLOR_ATTACHMENT0 ,
+                    GLES30.GL_TEXTURE_2D , renderCube.textureId , 0);
+            GLES30.glFramebufferRenderbuffer(GLES30.GL_FRAMEBUFFER , GLES30.GL_DEPTH_STENCIL_ATTACHMENT ,
+                    GLES30.GL_RENDERBUFFER , renderBufferId);
+        }//end for i
+
         GLES30.glBindFramebuffer(GLES20.GL_FRAMEBUFFER , 0);
     }
 
     @Override
     public void render() {
-        copyOesVideoToTexture();
-        renderVideoFrameCube();
+        copyOesVideoToTexture(nextFrameBufferId());
+
+        // renderVideoFrameCube();
+        for(int i = 0 ; i < renderCubeList.size() ; i ++){
+            RenderCube renderCube = renderCubeList.get(i);
+            renderVideoFrameCube(
+                    renderCube.textureId,
+                    renderCube.x,
+                    renderCube.y,
+                    renderCube.width,
+                    renderCube.height
+            );
+        }//end for each
     }
 
-    public void renderVideoFrameCube(){
+    public void renderVideoFrameCube(int textureId , float x , float y , float width , float height){
         GLES30.glUseProgram(videoFrameProgramId);
 
         GLES30.glEnableVertexAttribArray(0);
         GLES30.glEnableVertexAttribArray(1);
 
-        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , videoFramePositionBufferId);
-        GLES30.glVertexAttribPointer(0, 2 , GLES30.GL_FLOAT , false , 2 * Float.BYTES , 0);
+        positionBuf.position(0);
+        positionBuf.put(x);
+        positionBuf.put(y);
+        positionBuf.put(x +width);
+        positionBuf.put(y);
+        positionBuf.put(x +width);
+        positionBuf.put(y + height);
+        positionBuf.put(x);
+        positionBuf.put(y + height);
+        positionBuf.position(0);
 
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , videoFramePositionBufferId);
+        GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER , 8 * Float.BYTES , positionBuf , GLES30.GL_STATIC_DRAW);
+        GLES30.glVertexAttribPointer(0, 2 , GLES30.GL_FLOAT , false , 2 * Float.BYTES , 0);
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER , textureBufId);
         GLES30.glVertexAttribPointer(1, 2 , GLES30.GL_FLOAT , false , 2 * Float.BYTES , 0);
 
@@ -256,8 +300,7 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
                 contextView.camera.getMatrix(), 0);
 
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D , videoFrameTextureId);
-
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D , textureId);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLE_FAN , 0 , 4);
 
         GLES30.glDisableVertexAttribArray(0);
@@ -268,14 +311,14 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
      *  framebuffer copy
      *
      */
-    private void copyOesVideoToTexture(){
+    private void copyOesVideoToTexture(int frameBufId){
         surfaceTexture.updateTexImage();
         surfaceTexture.getTransformMatrix(originVideoTextureMatrix);
 //        LogUtil.logArray(matrix);
 
-        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , frameBufferId);
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , frameBufId);
         if(GLES30.glCheckFramebufferStatus(GLES30.GL_FRAMEBUFFER) != GLES30.GL_FRAMEBUFFER_COMPLETE){
-            LogUtil.log(frameBufferId + " framebuffer is Error!");
+            LogUtil.log(frameBufId + " framebuffer is Error!");
             GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER , 0);
             return;
         }
@@ -325,14 +368,29 @@ public class VideoFrameCopyWidget implements IRender , SurfaceTexture.OnFrameAva
         oesTextureIds[0] = videoOesTextureId;
         GLES30.glDeleteBuffers(oesTextureIds.length , oesTextureIds , 0);
 
-        int textureIds[] = new int[1];
-        textureIds[0] = videoFrameTextureId;
-        GLES30.glDeleteBuffers(textureIds.length , textureIds , 0);
+        int textureIds[] = new int[renderCubeList.size()];
+        for(int i = 0 ; i < textureIds.length;i++){
+            textureIds[i] = renderCubeList.get(i).textureId;
+        }
+        GLES30.glDeleteTextures(renderCubeList.size() , textureIds , 0);
+
+        int frameBufferIds[] = new int[renderCubeList.size()];
+        for(int i = 0 ; i < frameBufferIds.length;i++){
+            frameBufferIds[i] = renderCubeList.get(i).frameBufferId;
+        }
+        GLES30.glDeleteFramebuffers(frameBufferIds.length , frameBufferIds , 0);
     }
 
     @Override
     public void onFrameAvailable(SurfaceTexture surfaceTexture) {
-        // LogUtil.log(" onFrameAvailable");
+//         LogUtil.log(" onFrameAvailable");
          contextView.requestRender();
+    }
+
+    public int nextFrameBufferId(){
+        RenderCube renderCube = renderCubeList.get(index);
+        index++;
+        index = index % renderCubeList.size();
+        return renderCube.frameBufferId;
     }
 }//end class

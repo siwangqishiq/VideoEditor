@@ -108,7 +108,7 @@ public class VideoEditor {
             MediaFormat mediaFormat = mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex());
 //            mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE , 65536);
 //            mVideoCodec.configure(mediaFormat , new Surface(videoWidget.surfaceTexture), null ,0);
-            mVideoCodec.configure(mediaFormat , view.videoFrameCopyWidget.getVideoSurface(),
+            mVideoCodec.configure(mediaFormat , view.timelineFramesWidget.getVideoSurface(),
                     null ,0);
 
             mVideoCodec.setCallback(new MediaCodec.Callback() {
@@ -134,6 +134,7 @@ public class VideoEditor {
                         //to next frame
                         mVideoExtractor.advance();
                     }else{
+                        LogUtil.log("video end!");
                         codec.queueInputBuffer(index , 0 , 0 , 0 , MediaCodec.BUFFER_FLAG_END_OF_STREAM);
                     }
                 }
