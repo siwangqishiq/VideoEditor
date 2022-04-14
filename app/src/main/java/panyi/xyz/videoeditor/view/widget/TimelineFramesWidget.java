@@ -23,7 +23,7 @@ public class TimelineFramesWidget implements IRender , SurfaceTexture.OnFrameAva
     private FloatBuffer positionBuf;
     private FloatBuffer textureBuf;
 
-    private final int FRAME_SIZE = 32;
+    private final int FRAME_SIZE = 1;
 
     private int posBufId;
     private int textureBufId;
@@ -72,8 +72,8 @@ public class TimelineFramesWidget implements IRender , SurfaceTexture.OnFrameAva
 
         float x = 0;
         float y= 0;
-        float width = 200;
-        float height = 200;
+        float width = 16;
+        float height = 16;
 
         for(int i = 0 ; i < FRAME_SIZE ; i ++){
             RenderCube renderCube = new RenderCube();
@@ -141,9 +141,11 @@ public class TimelineFramesWidget implements IRender , SurfaceTexture.OnFrameAva
     }
 
     public Surface getVideoSurface(){
-        if(videoSurface == null){
-            videoSurface = new Surface(surfaceTexture);
+        if(videoSurface != null){
+            videoSurface.release();
         }
+
+        videoSurface = new Surface(surfaceTexture);
         return videoSurface;
     }
 

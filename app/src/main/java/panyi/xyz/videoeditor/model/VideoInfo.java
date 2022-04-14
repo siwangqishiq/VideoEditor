@@ -14,7 +14,9 @@ public class VideoInfo {
         result.duration = format.getLong(MediaFormat.KEY_DURATION)/1000;
         result.width = format.getInteger(MediaFormat.KEY_WIDTH);
         result.height = format.getInteger(MediaFormat.KEY_HEIGHT);
-        result.sampleRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
+        if(format.containsKey(MediaFormat.KEY_FRAME_RATE)){
+            result.sampleRate = format.getInteger(MediaFormat.KEY_FRAME_RATE);
+        }
         return result;
     }
 

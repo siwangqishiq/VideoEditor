@@ -17,6 +17,7 @@ import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.view.widget.Camera;
 import panyi.xyz.videoeditor.view.widget.IRender;
 import panyi.xyz.videoeditor.view.widget.RectWidget;
+import panyi.xyz.videoeditor.view.widget.TextRenderHelper;
 import panyi.xyz.videoeditor.view.widget.TimelineFramesWidget;
 import panyi.xyz.videoeditor.view.widget.VideoFrameCopyWidget;
 import panyi.xyz.videoeditor.view.widget.VideoFrameWidget;
@@ -101,6 +102,8 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
     private List<IRender> components = new ArrayList<IRender>(8);
 
+    private TextRenderHelper textRenderHelper;
+
     private void initComponent(){
         camera = new Camera(0 , 0, screenWidth , screenHeight);
 
@@ -126,6 +129,8 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     }
 
     private void onInit(){
+        textRenderHelper = new TextRenderHelper(getContext()  ,camera.viewWidth , camera.viewHeight);
+
         for(IRender render : components){
             render.init();
         }
@@ -152,6 +157,7 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     }
 
     private void onFree(){
+        textRenderHelper.free();
         for(IRender render : components){
             render.free();
         }

@@ -72,6 +72,7 @@ public class VideoEditorActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_test).setOnClickListener((v)->{
             //mVideoEditor.decodeNextFrame();
+            mVideoEditor.pauseOrResume();
         });
     }
 

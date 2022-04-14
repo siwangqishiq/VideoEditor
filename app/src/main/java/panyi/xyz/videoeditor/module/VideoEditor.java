@@ -5,6 +5,7 @@ import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Bundle;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.widget.Toast;
@@ -24,6 +25,8 @@ import panyi.xyz.videoeditor.view.VideoEditorGLView;
 import panyi.xyz.videoeditor.view.widget.VideoFrameWidget;
 import panyi.xyz.videoeditor.view.widget.VideoWidget;
 
+import static android.media.MediaExtractor.SEEK_TO_CLOSEST_SYNC;
+
 /**
  *  视频编辑核心类
  *   用于与Ui集成
@@ -37,12 +40,16 @@ public class VideoEditor {
 
     public VideoInfo mVideoInfo;//视频meta信息
     public MediaExtractor mVideoExtractor;
-
+    
     public MediaCodec mVideoCodec;
 
     private int readFrameCount = 0;
 
     private boolean isRunning = false;
+
+    private boolean isPause = false;
+
+    private long pauseTime = -1;
 
     public void initView(ViewGroup container){
         mContainer = container;
@@ -112,26 +119,25 @@ public class VideoEditor {
                     null ,0);
 
             mVideoCodec.setCallback(new MediaCodec.Callback() {
+                private long lastFrameTime = -1;
+
                 @Override
                 public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
-                    if(!isRunning){
+                    if(!isRunning || isPause){
                         return;
                     }
 
                     if(index < 0){
                         return;
                     }
-                    // LogUtil.log("onInputBufferAvailable index = " + index);
-                    ByteBuffer buf = codec.getInputBuffer(index);
 
-                    LogUtil.i("read sample time: " + mVideoExtractor.getSampleTime());
+                    // LogUtil.log("onInputBufferAvailable index = " + index);
+//                    LogUtil.log("read sample time: " + mVideoExtractor.getSampleTime());
+                    ByteBuffer buf = codec.getInputBuffer(index);
                     final int readSize = mVideoExtractor.readSampleData(buf , 0);
 
                     if(readSize > 0){
                         codec.queueInputBuffer(index , 0 , readSize , mVideoExtractor.getSampleTime() , 0);
-
-
-                        //to next frame
                         mVideoExtractor.advance();
                     }else{
                         LogUtil.log("video end!");
@@ -145,27 +151,30 @@ public class VideoEditor {
                         return;
                     }
 
-                    LogUtil.i("presentationTimeUs = " + info.presentationTimeUs +"   bufferId = "
-                            + outputBufferId +" keyframe: "+  (info.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME));
+//                    LogUtil.i("presentationTimeUs = " + info.presentationTimeUs +"   bufferId = "
+//                            + outputBufferId +" keyframe: "+  (info.flags & MediaCodec.BUFFER_FLAG_KEY_FRAME));
 
 //                    codec.releaseOutputBuffer(index , info.presentationTimeUs * 1000);
 //                    final ByteBuffer outputBuffer = codec.getOutputBuffer(outputBufferId);
 
 //                    codec.releaseOutputBuffer(outputBufferId , true);
 
-                    codec.releaseOutputBuffer(outputBufferId , info.presentationTimeUs);
+                    codec.releaseOutputBuffer(outputBufferId , true);
+
+//                    long time = info.presentationTimeUs / 1000;
+//                    if(time - lastFrameTime >= 60 * 1000){
+//                        lastFrameTime = time;
+//                        codec.releaseOutputBuffer(outputBufferId , true);
+//                    }else{
+//                        codec.releaseOutputBuffer(outputBufferId , false);
+//                    }
+
+//                    codec.releaseOutputBuffer(outputBufferId , true);
+//                    codec.releaseOutputBuffer(outputBufferId , info.presentationTimeUs * 1000);
 
 //                    view.videoFrameWidget.fetchNextSurfaceTexture();
 //                     codec.setOutputSurface(view.videoFrameWidget.fetchNextSurfaceTexture());
                     // readFrameCount++;
-
-//                    if(readFrameCount >= VideoFrameWidget.TEXTURE_COUNT){
-//                        // codec.stop();
-//                        LogUtil.log("decode frame : " + readFrameCount +" media codec stop");
-//                        view.requestRender();
-//
-//                        readFrameCount = 0;
-//                    }
                 }
 
                 @Override
@@ -183,6 +192,36 @@ public class VideoEditor {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void pauseOrResume(){
+        if(mVideoCodec == null){
+            return;
+        }
+
+        if(isPause){//play
+            mVideoExtractor.seekTo(pauseTime , MediaExtractor.SEEK_TO_PREVIOUS_SYNC);
+            initMediaCodec(mGLView);
+        }else{//pause
+            mVideoCodec.stop();
+
+            pauseTime = mVideoExtractor.getSampleTime();
+        }
+
+        isPause = !isPause;
+    }
+
+    public void suspendMediaCodec(boolean pause){
+        if(mVideoCodec == null)
+            return;
+
+//        final Bundle params = new Bundle();
+//        params.putInt(MediaCodec.PARAMETER_KEY_SUSPEND, pause ? 1 : 0);
+//        mVideoCodec.setParameters(params);
+
+        isPause = pause;
+
+
     }
 
     public void decodeNextFrame(){
