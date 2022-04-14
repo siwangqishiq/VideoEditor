@@ -136,14 +136,21 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
         }
     }
 
+    float x =0 ;
+    float y = 0;
+
     @Override
     public void onDrawFrame(GL10 gl10) {
         GLES30.glClearColor(0.0f , 0.0f, 0.0f, 1.0f);
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
 
         onRender();
+
+        int height = 50;
+        for(int y = 0 ; y < screenHeight;y+=height){
+            textRenderHelper.renderText("height : " + y , 20 , y , height);
+        }
     }
 
     private void onRender(){
