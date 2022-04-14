@@ -9,6 +9,7 @@ out vec2 vUv;
 
 void main(){
      gl_Position = vec4(uMatrix * vec3(aPosition.xy, 1.0f) , 1.0f);
+     gl_Position.z -= 0.01f;
 //     vUv = vec2(aTexture.x , 1.0 - aTexture.y);
      vUv = aTexture.xy;
 }

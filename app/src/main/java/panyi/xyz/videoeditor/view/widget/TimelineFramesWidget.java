@@ -72,8 +72,8 @@ public class TimelineFramesWidget implements IRender , SurfaceTexture.OnFrameAva
 
         float x = 0;
         float y= 0;
-        float width = 200;
-        float height = 200;
+        float width = contextView.camera.viewWidth;
+        float height = contextView.camera.viewHeight;
 
         for(int i = 0 ; i < FRAME_SIZE ; i ++){
             RenderCube renderCube = new RenderCube();

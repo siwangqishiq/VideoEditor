@@ -84,6 +84,10 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
         GLES30.glViewport(0 , 0 , width , height);
         LogUtil.log("GLView width = " + width +" height = " + height);
 
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST );
+        GLES30.glEnable(GLES30.GL_BLEND);
+        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+
         initComponent();
 
         onInit();
@@ -102,7 +106,8 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
     private List<IRender> components = new ArrayList<IRender>(8);
 
-    private TextRenderHelper textRenderHelper;
+    //文字渲染
+    public TextRenderHelper textRenderHelper;
 
     private void initComponent(){
         camera = new Camera(0 , 0, screenWidth , screenHeight);
@@ -143,14 +148,11 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     public void onDrawFrame(GL10 gl10) {
         GLES30.glClearColor(0.0f , 0.0f, 0.0f, 1.0f);
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
-        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
 
         onRender();
 
-        int height = 50;
-        for(int y = 0 ; y < screenHeight;y+=height){
-            textRenderHelper.renderText("height : " + y , 20 , y , height);
-        }
+        textRenderHelper.renderText("包夜", 0 , screenHeight - 400 , 400);
+        textRenderHelper.renderText("800", 0 , screenHeight - 400 - 400 , 400);
     }
 
     private void onRender(){

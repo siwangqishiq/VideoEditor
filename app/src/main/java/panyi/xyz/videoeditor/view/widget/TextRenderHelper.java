@@ -21,7 +21,7 @@ import panyi.xyz.videoeditor.util.ShaderUtil;
  *  文字渲染辅助类
  */
 public class TextRenderHelper {
-    private static final String ALL_CHAR = "你好世界 " +
+    private static final String ALL_CHAR = "你好世界 死 包夜" +
             "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890:";
 
     private static final int TEXTURE_SIZE = 1024;
@@ -64,8 +64,7 @@ public class TextRenderHelper {
         initShader();
 
         //开启blend混合方式  以正确渲染半透明的图片
-        GLES30.glEnable(GLES30.GL_BLEND);
-        GLES30.glBlendFunc(GLES30.GL_SRC_ALPHA, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+//        GLES30.glEnable(GLES30.GL_BLEND);
     }
 
     private void createTexture(){
@@ -339,7 +338,7 @@ public class TextRenderHelper {
 
         Paint paint = new Paint();
         paint.setTextSize(128.0f);
-        paint.setColor(Color.RED);
+        paint.setColor(Color.BLACK);
 
         final float width = TEXTURE_SIZE;
         final float height = TEXTURE_SIZE;
