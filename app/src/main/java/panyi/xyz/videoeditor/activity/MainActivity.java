@@ -12,7 +12,9 @@ import android.graphics.Rect;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.os.Bundle;
+import android.os.Looper;
 import android.text.StaticLayout;
+import android.view.Choreographer;
 import android.widget.ImageView;
 
 import androidx.appcompat.app.AppCompatActivity;

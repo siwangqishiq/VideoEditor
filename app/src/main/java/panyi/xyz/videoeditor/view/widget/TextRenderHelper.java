@@ -48,12 +48,16 @@ public class TextRenderHelper {
     private int textProgramId = -1;
 
     private int uMatrixLoc = -1;
+    private int uTextColorLoc = -1;
 
     private int posBufId;
     private FloatBuffer posBuf;
 
     private int texBufId;
     private FloatBuffer texBuf;
+
+    //默认文本颜色
+    private float textDefaultColor[] = {1.0f , 1.0f , 0.0f , 0.5f};
 
     public TextRenderHelper(Context context , float w , float h){
         this.context = context;
@@ -62,9 +66,6 @@ public class TextRenderHelper {
         createTexture();
         initVertexAttribute();
         initShader();
-
-        //开启blend混合方式  以正确渲染半透明的图片
-//        GLES30.glEnable(GLES30.GL_BLEND);
     }
 
     private void createTexture(){
@@ -136,6 +137,9 @@ public class TextRenderHelper {
 
         uMatrixLoc = GLES30.glGetUniformLocation(textProgramId , "uMatrix");
         LogUtil.log("text render uMatrixLoc : " + uMatrixLoc);
+
+        uTextColorLoc = GLES30.glGetUniformLocation(textProgramId , "textColor");
+        LogUtil.log("text render uTextColorLoc : " + uTextColorLoc);
     }
 
 
@@ -147,13 +151,53 @@ public class TextRenderHelper {
      * @param y
      * @param textSize
      */
-    public void renderText(String text , float x , float y , float textSize){
+    public void renderText(final String text , float x , float y , float textSize){
+        renderText(text , x , y , textSize , textDefaultColor);
+    }
+
+    /**
+     *
+     * @param text
+     * @param x
+     * @param y
+     * @param textSize
+     * @param color
+     */
+    public void renderText(final String text , float x , float y , float textSize  , float[] color){
         if(text == "" || text == null){
             return;
         }
 
         int vertexCount = fillBuf(text , x , y , textSize);
-        doRender(vertexCount);
+        doRender(vertexCount , color);
+    }
+
+    /**
+     *  提前预先计算处文本长度
+     *  多用于布局适配
+     *
+     * @param text
+     * @param textSize
+     * @return
+     */
+    public int calculateTextSize(final String text , int textSize){
+        if(text == "" || text == null){
+            return 0;
+        }
+
+        int resultWidth = 0;
+        for(int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+
+            final CharRenderInfo renderInfo = charInfo.get(ch);
+            int chWidth = textSize >> 1;
+            if(renderInfo != null){
+                chWidth = (int)calculateCharWidth(renderInfo , (int)textSize);
+            }
+            resultWidth += chWidth;
+        }//end for i
+
+        return resultWidth;
     }
 
     /**
@@ -282,7 +326,7 @@ public class TextRenderHelper {
         texBuf.put(0);
     }
 
-    private void doRender(final int vertexCount){
+    private void doRender(final int vertexCount , float[] textColor){
         GLES30.glUseProgram(textProgramId);
 
         GLES30.glEnableVertexAttribArray(0);
@@ -302,6 +346,8 @@ public class TextRenderHelper {
 
         GLES30.glUniformMatrix3fv(uMatrixLoc , 1 , false ,
                 camera.getMatrix(), 0);
+
+        GLES30.glUniform4fv(uTextColorLoc , 1 , textColor , 0);
 
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D , bitTextureId);

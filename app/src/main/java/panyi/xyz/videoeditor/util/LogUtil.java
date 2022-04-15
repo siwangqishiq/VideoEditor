@@ -1,5 +1,7 @@
 package panyi.xyz.videoeditor.util;
 
+import android.util.Log;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -17,12 +19,17 @@ public final class LogUtil {
         logger.log(Level.WARNING , genLogMessage(genLogMessage(msg)));
     }
 
+
     private static String genLogMessage(final String msg){
         return Thread.currentThread() + "  " + msg;
     }
 
     public static void log(final String msg){
         System.out.println(genLogMessage(msg));
+    }
+
+    public static void L(String TAG , String msg){
+        Log.d(TAG, msg);
     }
 
     public static void logArray(float[] matrix){

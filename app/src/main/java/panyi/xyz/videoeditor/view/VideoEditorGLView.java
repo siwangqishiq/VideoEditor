@@ -5,6 +5,7 @@ import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
+import android.view.Choreographer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +15,8 @@ import javax.microedition.khronos.opengles.GL10;
 
 import panyi.xyz.videoeditor.model.VideoInfo;
 import panyi.xyz.videoeditor.util.LogUtil;
+import panyi.xyz.videoeditor.util.OpenglEsUtils;
+import panyi.xyz.videoeditor.util.TimeUtil;
 import panyi.xyz.videoeditor.view.widget.Camera;
 import panyi.xyz.videoeditor.view.widget.IRender;
 import panyi.xyz.videoeditor.view.widget.RectWidget;
@@ -29,8 +32,6 @@ import panyi.xyz.videoeditor.view.widget.VideoWidget;
  *
  */
 public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.Renderer {
-    private VideoTimeline mVideoTimeline;
-
     public static final int TEXTURE_SIZE = 16;
 
     private Callback mCallback;
@@ -73,7 +74,7 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
     @Override
     public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
-        mVideoTimeline = new VideoTimeline();
+
     }
 
     @Override
@@ -108,6 +109,8 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
     //文字渲染
     public TextRenderHelper textRenderHelper;
+
+    public long currentTimeStamp = 0;
 
     private void initComponent(){
         camera = new Camera(0 , 0, screenWidth , screenHeight);
@@ -151,8 +154,10 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
         onRender();
 
-        textRenderHelper.renderText("包夜", 0 , screenHeight - 400 , 400);
-        textRenderHelper.renderText("800", 0 , screenHeight - 400 - 400 , 400);
+        String showTime = TimeUtil.videoTimeDuration(currentTimeStamp);
+        int strWidth = textRenderHelper.calculateTextSize(showTime , 100);
+        textRenderHelper.renderText(showTime, screenWidth - strWidth , 0 , 100);
+        OpenglEsUtils.debugFps();
     }
 
     private void onRender(){

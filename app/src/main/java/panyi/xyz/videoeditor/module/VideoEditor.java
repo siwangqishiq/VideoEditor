@@ -161,7 +161,9 @@ public class VideoEditor {
 
                     codec.releaseOutputBuffer(outputBufferId , true);
 
-//                    long time = info.presentationTimeUs / 1000;
+                    long time = info.presentationTimeUs / 1000;
+                    view.currentTimeStamp = time;
+
 //                    if(time - lastFrameTime >= 60 * 1000){
 //                        lastFrameTime = time;
 //                        codec.releaseOutputBuffer(outputBufferId , true);
