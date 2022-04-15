@@ -1,17 +1,23 @@
 package panyi.xyz.videoeditor.module;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.SurfaceTexture;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.os.Bundle;
+import android.os.Handler;
+import android.text.TextUtils;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
@@ -19,6 +25,7 @@ import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.model.Code;
 import panyi.xyz.videoeditor.model.SelectFileItem;
 import panyi.xyz.videoeditor.model.VideoInfo;
+import panyi.xyz.videoeditor.util.FileUtil;
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.MediaUtil;
 import panyi.xyz.videoeditor.view.VideoEditorGLView;
@@ -32,6 +39,8 @@ import static android.media.MediaExtractor.SEEK_TO_CLOSEST_SYNC;
  *   用于与Ui集成
  */
 public class VideoEditor {
+
+    private final String WORK_DIR = "videoeditor";
 
     private ViewGroup mContainer;
     private Context mContext;
@@ -50,6 +59,16 @@ public class VideoEditor {
     private boolean isPause = false;
 
     private long pauseTime = -1;
+
+    private Handler uiHandler = new Handler();
+
+    public interface GetThumbImageCallback{
+        void onGetThumbImage(String filepath);
+    }
+
+    private GetThumbImageCallback mGetPixelCallback;
+
+    private File workDir;
 
     public void initView(ViewGroup container){
         mContainer = container;
@@ -80,6 +99,8 @@ public class VideoEditor {
     }
 
     public int prepare(final SelectFileItem fileItem){
+        createWorkDir(fileItem.name);
+
         try {
             mVideoExtractor = MediaUtil.createMediaExtractorByMimeType(fileItem.path , MediaUtil.TYPE_VIDEO);
         } catch (IOException e) {
@@ -97,7 +118,24 @@ public class VideoEditor {
 
         LogUtil.log("video meta: " + mVideoInfo.toString());
 
+
         addGLView();
+
+        mGLView.setGetPixelCallback(new VideoEditorGLView.GetPixelCallback() {
+            @Override
+            public void onGetBitmap(Bitmap bitmap, long timeStamp) {
+                final String imageFilePath = saveBitmapToFile(bitmap , timeStamp);
+                if(TextUtils.isEmpty(imageFilePath)){
+                    return;
+                }
+
+                uiHandler.post(()->{
+                    if(mGetPixelCallback != null){
+                        mGetPixelCallback.onGetThumbImage(imageFilePath);
+                    }
+                });
+            }
+        });
 
         mGLView.setCallback(new VideoEditorGLView.Callback() {
             @Override
@@ -105,8 +143,40 @@ public class VideoEditor {
                 initMediaCodec(view);
             }
         });
-
         return Code.SUCCESS;
+    }
+
+    /**
+     * 创建工作目录
+     * @param filename
+     */
+    private void createWorkDir(String filename){
+        filename = FileUtil.findNameFromPath(filename);
+        workDir = new File(mContext.getCacheDir() , WORK_DIR + File.pathSeparator+ filename);
+        if(!workDir.exists()){
+            workDir.mkdir();
+        }
+    }
+
+
+    private String saveBitmapToFile(Bitmap bitmap, long currentTimeStamp){
+        File file =  new File(workDir , String.format("%d_thumb.jpeg" , currentTimeStamp));
+        file.deleteOnExit();
+
+        try {
+            FileOutputStream outputStream = new FileOutputStream(file);
+            if(bitmap.compress(Bitmap.CompressFormat.JPEG , 100 , outputStream)){
+                outputStream.flush();
+                outputStream.close();
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return file.getAbsolutePath();
     }
 
     private void initMediaCodec(VideoEditorGLView view){
@@ -222,8 +292,10 @@ public class VideoEditor {
 //        mVideoCodec.setParameters(params);
 
         isPause = pause;
+    }
 
-
+    public void setGetPixelCallback(GetThumbImageCallback callback) {
+        this.mGetPixelCallback = callback;
     }
 
     public void decodeNextFrame(){

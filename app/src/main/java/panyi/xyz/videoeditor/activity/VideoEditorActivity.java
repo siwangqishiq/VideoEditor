@@ -2,10 +2,16 @@ package panyi.xyz.videoeditor.activity;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -13,10 +19,17 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import com.bumptech.glide.Glide;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
 import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.model.SelectFileItem;
 import panyi.xyz.videoeditor.module.VideoEditor;
 import panyi.xyz.videoeditor.util.LogUtil;
+import panyi.xyz.videoeditor.view.VideoEditorGLView;
 
 /**
  *
@@ -41,6 +54,10 @@ public class VideoEditorActivity extends AppCompatActivity {
     private static final int STATUS_HAS_SELECTED_EDIT_FILE = 1;//已选择素材
 
     private VideoEditor mVideoEditor;
+
+    private ViewGroup mGallery;
+
+    private List<Bitmap> bitmapList = new ArrayList<Bitmap>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +91,33 @@ public class VideoEditorActivity extends AppCompatActivity {
             //mVideoEditor.decodeNextFrame();
             mVideoEditor.pauseOrResume();
         });
+
+        mGallery = findViewById(R.id.gallery);
+
+        mVideoEditor.setGetPixelCallback(new VideoEditor.GetThumbImageCallback(){
+            @Override
+            public void onGetThumbImage(String filepath) {
+
+                TextView textView = new TextView(getContext());
+                textView.setText(filepath);
+
+//                ImageView img = new ImageView(getContext());
+//                Glide.with(getContext()).load(Uri.fromFile(new File(filepath))).into(img);
+                ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(250,
+                        ViewGroup.LayoutParams.MATCH_PARENT);
+                mGallery.addView(textView , params);
+            }
+        });
+
+
+
+//        //                LogUtil.log("获得截图---> " + bitmap);
+//        bitmapList.add(bitmap);
+
+    }
+
+    private Context getContext(){
+        return this;
     }
 
     /**

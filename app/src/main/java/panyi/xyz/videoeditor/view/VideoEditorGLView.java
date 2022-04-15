@@ -1,12 +1,14 @@
 package panyi.xyz.videoeditor.view;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.Choreographer;
 
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,18 +38,24 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
     private Callback mCallback;
 
+    private GetPixelCallback mGetPixelCallback;
+
     private VideoInfo mVideoInfo;
 
     public VideoInfo getVideoInfo(){
         return mVideoInfo;
     }
 
+    public void setCallback(Callback mCallback) {
+        this.mCallback = mCallback;
+    }
+
     public interface Callback{
         void onVideoWidgetReady(VideoEditorGLView view);
     }
 
-    public void setCallback(Callback mCallback) {
-        this.mCallback = mCallback;
+    public interface GetPixelCallback{
+        void onGetBitmap(Bitmap bitmap , long timeStamp);
     }
 
     public VideoEditorGLView(Context context) {
@@ -58,6 +66,14 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     public VideoEditorGLView(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
+    }
+
+    public GetPixelCallback getGetPixelCallback() {
+        return mGetPixelCallback;
+    }
+
+    public void setGetPixelCallback(GetPixelCallback mGetPixelCallback) {
+        this.mGetPixelCallback = mGetPixelCallback;
     }
 
     public void setVideoInfo(VideoInfo info){
@@ -147,6 +163,9 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     float x =0 ;
     float y = 0;
 
+    int catchCount = 0;
+    int frameCount = 0;
+
     @Override
     public void onDrawFrame(GL10 gl10) {
         GLES30.glClearColor(0.0f , 0.0f, 0.0f, 1.0f);
@@ -154,16 +173,53 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
         onRender();
 
+        textRenderHelper.renderText(String.valueOf(frameCount) , 20 , screenHeight - 300 , 300);
+
         String showTime = TimeUtil.videoTimeDuration(currentTimeStamp);
-        int strWidth = textRenderHelper.calculateTextSize(showTime , 100);
-        textRenderHelper.renderText(showTime, screenWidth - strWidth , 0 , 100);
+        int strWidth = textRenderHelper.calculateTextSize(showTime , 300);
+        textRenderHelper.renderText(showTime, screenWidth - strWidth , 0 , 300);
+
         OpenglEsUtils.debugFps();
+
+        frameCount++;
+
+        scehduleCallback();
+    }
+
+    private void scehduleCallback(){
+        if(mGetPixelCallback != null){
+            if(catchCount <= Integer.MAX_VALUE){
+                final Bitmap bitmap = getPixelsFromBuffer(0 , 0 ,(int)screenWidth , (int)screenHeight);
+                mGetPixelCallback.onGetBitmap(bitmap , currentTimeStamp);
+            }
+            catchCount++;
+        }
     }
 
     private void onRender(){
         for(IRender render : components){
             render.render();
         }
+    }
+
+    public static Bitmap getPixelsFromBuffer(int x, int y, int width, int height) {
+        int b[] = new int[width * (y + height)];
+        int bt[] = new int[width * height];
+
+        IntBuffer ib = IntBuffer.wrap(b);
+        ib.position(0);
+        GLES20.glReadPixels(x, y, width, height, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, ib);
+
+        for (int i = 0, k = 0; i < height; i++, k++) {
+            for (int j = 0; j < width; j++) {
+                int pix = b[i * width + j];
+                int pb = (pix >> 16) & 0xff;
+                int pr = (pix << 16) & 0x00ff0000;
+                int pix1 = (pix & 0xff00ff00) | pr | pb;
+                bt[(height - k - 1) * width + j] = pix1;
+            }
+        }
+        return Bitmap.createBitmap(bt, width, height, Bitmap.Config.ARGB_8888);
     }
 
     public void onDestroy(){

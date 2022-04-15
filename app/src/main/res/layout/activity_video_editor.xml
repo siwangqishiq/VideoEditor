@@ -14,12 +14,13 @@
         android:layout_width="match_parent"
         />
 
-    <FrameLayout
+    <LinearLayout
         android:id="@+id/action_panel"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/preview_panel"
         android:layout_height="0dp"
         android:layout_width="match_parent"
+        android:orientation="vertical"
         >
         <Button
             android:id="@+id/btn_test"
@@ -27,5 +28,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             />
-    </FrameLayout>
+
+        <HorizontalScrollView
+            android:layout_height="match_parent"
+            android:layout_width="match_parent"
+            >
+            <LinearLayout
+                android:id="@+id/gallery"
+                android:orientation="horizontal"
+                android:layout_height="match_parent"
+                android:layout_width="match_parent">
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

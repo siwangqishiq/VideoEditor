@@ -57,7 +57,7 @@ public class TextRenderHelper {
     private FloatBuffer texBuf;
 
     //默认文本颜色
-    private float textDefaultColor[] = {1.0f , 1.0f , 0.0f , 0.5f};
+    private float textDefaultColor[] = {0.0f , 0.0f , 0.0f , 1.0f};
 
     public TextRenderHelper(Context context , float w , float h){
         this.context = context;
