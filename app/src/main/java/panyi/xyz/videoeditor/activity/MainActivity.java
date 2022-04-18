@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import panyi.xyz.videoeditor.R;
+import panyi.xyz.videoeditor.config.RequestCode;
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.view.widget.TextRenderHelper;
 
@@ -43,15 +44,20 @@ public class MainActivity extends AppCompatActivity {
 
 //        ImageView imgView = findViewById(R.id.show_image);
 //        imgView.setImageBitmap(TextRenderHelper.buildFontBit(-1));
+
+        findViewById(R.id.camera_btn).setOnClickListener((v)->{
+            CameraActionActivity.start(MainActivity.this);
+        });
+
+        findViewById(R.id.trans_btn).setOnClickListener((v)->{
+            TransActivity.start(MainActivity.this);
+        });
     }
 
     private void requestPermission(){
         if(ActivityCompat.checkSelfPermission(this , Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this , new String[]{Manifest.permission.READ_EXTERNAL_STORAGE} , 100);
+            ActivityCompat.requestPermissions(this , new String[]{Manifest.permission.READ_EXTERNAL_STORAGE} , RequestCode.PERMISSION_READ_GALLERY);
         }
     }
-
-
-
 }
