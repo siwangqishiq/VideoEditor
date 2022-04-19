@@ -187,13 +187,13 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
     }
 
     private void scehduleCallback(){
-        if(mGetPixelCallback != null){
-            if(catchCount <= Integer.MAX_VALUE){
-                final Bitmap bitmap = getPixelsFromBuffer(0 , 0 ,(int)screenWidth , (int)screenHeight);
-                mGetPixelCallback.onGetBitmap(bitmap , currentTimeStamp);
-            }
-            catchCount++;
-        }
+//        if(mGetPixelCallback != null){
+//            if(catchCount <= Integer.MAX_VALUE){
+//                final Bitmap bitmap = getPixelsFromBuffer(0 , 0 ,(int)screenWidth , (int)screenHeight);
+//                mGetPixelCallback.onGetBitmap(bitmap , currentTimeStamp);
+//            }
+//            catchCount++;
+//        }
     }
 
     private void onRender(){

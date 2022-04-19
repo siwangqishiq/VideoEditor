@@ -1,28 +1,23 @@
-package panyi.xyz.videoeditor.module;
+package panyi.xyz.videoeditor.module.trans;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.Inet4Address;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
+import panyi.xyz.videoeditor.module.trans.ITrans;
 import panyi.xyz.videoeditor.util.LogUtil;
 
 /**
  * 基于UDP实现的传输
  */
-public class UdpTrans extends  Thread implements ITrans{
-    private final int BUF_SIZE = 1024 * 1024; //1M
+public class UdpTrans extends  Thread implements ITrans {
+    private final int BUF_SIZE = 10 * 1024 * 1024; //10M
 
     private int port = -1;
 
@@ -85,6 +80,9 @@ public class UdpTrans extends  Thread implements ITrans{
             }else{
                 socket = new DatagramSocket();
             }
+
+            socket.setReceiveBufferSize(BUF_SIZE);
+            socket.setSendBufferSize(BUF_SIZE);
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -97,10 +95,10 @@ public class UdpTrans extends  Thread implements ITrans{
             byte buf[] = new byte[BUF_SIZE];
             DatagramPacket  packet = new DatagramPacket(buf , buf.length);
             try {
-                LogUtil.log("wait receive data...");
+//                LogUtil.log("wait receive data...");
                 socket.receive(packet);
                 final int len = packet.getLength();
-                LogUtil.log(packet.getAddress().getHostAddress() + " receive data size : " + len);
+//                LogUtil.log(packet.getAddress().getHostAddress() + " receive data size : " + len);
                 //do callback
                 if(callback != null){
                     byte[] receivedData = new byte[len];

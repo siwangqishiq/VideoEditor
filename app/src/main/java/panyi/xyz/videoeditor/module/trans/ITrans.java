@@ -1,4 +1,4 @@
-package panyi.xyz.videoeditor.module;
+package panyi.xyz.videoeditor.module.trans;
 
 import java.net.UnknownHostException;
 
