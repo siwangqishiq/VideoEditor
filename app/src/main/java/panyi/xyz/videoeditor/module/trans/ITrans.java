@@ -13,10 +13,11 @@ public interface ITrans {
     /**
      *  发送数据
      * @param data
+     *
      * @return 发送成功的字节数
      *
      */
-    int sendData(String remoteAddress , int remotePort , byte[] data) throws UnknownHostException;
+    int sendData(String remoteAddress , int remotePort ,int what, byte[] data) throws UnknownHostException;
 
     /**
      * 关闭
@@ -28,6 +29,6 @@ public interface ITrans {
          *  接收到数据
          * @param data
          */
-        void onReceiveData(byte[] data);
+        void onReceiveData(int what , byte[] data);
     }
 }

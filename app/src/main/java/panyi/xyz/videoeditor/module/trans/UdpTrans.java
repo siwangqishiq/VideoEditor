@@ -6,6 +6,10 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,16 +21,16 @@ import panyi.xyz.videoeditor.util.LogUtil;
  * 基于UDP实现的传输
  */
 public class UdpTrans extends  Thread implements ITrans {
-    private final int BUF_SIZE = 10 * 1024 * 1024; //10M
-
     private int port = -1;
 
     private AtomicBoolean isRunning = new AtomicBoolean(false);
     private DatagramSocket socket;
 
     private OnReceiveCallback callback;
-
     private ExecutorService sendTaskThreadPool;
+
+    private byte[] receiveBuf;
+    private Map<Long , Packet> receivePackMap = new HashMap<Long,Packet>();
 
     @Override
     public void startServer(int port, OnReceiveCallback callback) {
@@ -38,28 +42,39 @@ public class UdpTrans extends  Thread implements ITrans {
     }
 
     @Override
-    public int sendData(String remoteAddress, int remotePort, byte[] data) throws UnknownHostException {
+    public int sendData(String remoteAddress, int remotePort,int what,  byte[] data) throws UnknownHostException {
         if(socket == null || !isRunning.get() || sendTaskThreadPool == null){
             return -1;
         }
 
         sendTaskThreadPool.submit(()->{
-            try {
-                DatagramPacket sendPacket = new DatagramPacket(data , 0 , data.length);
-                sendPacket.setPort(remotePort);
-                sendPacket.setAddress(InetAddress.getByName(remoteAddress));
-                socket.send(sendPacket);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            //分包
+            List<Fragment> fragmentList = Packet.sliceData(data , what);
+
+            for(Fragment frag : fragmentList){
+                LogUtil.log("send frag: " + frag);
+                sendByUdpTrans(remoteAddress , remotePort , frag.toByteArray());
+            }//end for each
         });
         return 0;
+    }
+
+    private void sendByUdpTrans(String remoteAddress, int remotePort ,byte[] sendData){
+        try {
+            DatagramPacket sendPacket = new DatagramPacket(sendData , 0 , sendData.length);
+            sendPacket.setPort(remotePort);
+            sendPacket.setAddress(InetAddress.getByName(remoteAddress));
+            socket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
     @Override
     public void close() {
         isRunning.set(false);
+        receivePackMap.clear();
 
         if(socket != null){
             socket.close();
@@ -80,9 +95,6 @@ public class UdpTrans extends  Thread implements ITrans {
             }else{
                 socket = new DatagramSocket();
             }
-
-            socket.setReceiveBufferSize(BUF_SIZE);
-            socket.setSendBufferSize(BUF_SIZE);
         } catch (SocketException e) {
             e.printStackTrace();
         }
@@ -92,18 +104,35 @@ public class UdpTrans extends  Thread implements ITrans {
 
         isRunning.set(true);
         while(isRunning.get()){
-            byte buf[] = new byte[BUF_SIZE];
-            DatagramPacket  packet = new DatagramPacket(buf , buf.length);
+            if(receiveBuf == null){
+                receiveBuf = new byte[Packet.FRAGMENT_SIZE];
+            }
             try {
 //                LogUtil.log("wait receive data...");
-                socket.receive(packet);
-                final int len = packet.getLength();
-//                LogUtil.log(packet.getAddress().getHostAddress() + " receive data size : " + len);
-                //do callback
-                if(callback != null){
-                    byte[] receivedData = new byte[len];
-                    System.arraycopy(buf , 0 , receivedData , 0, len);
-                    callback.onReceiveData(receivedData);
+                DatagramPacket  pack = new DatagramPacket(receiveBuf , receiveBuf.length);
+                socket.receive(pack);
+                final int len = pack.getLength();
+
+                final Fragment frag = Fragment.decode(receiveBuf , 0 , len);
+                LogUtil.log("frag : " + frag);
+
+                Packet packet = receivePackMap.get(frag.pckId);
+                if(packet == null){
+                    packet = new Packet(frag.pckId , frag.fragCount , frag.totalSize , frag.what);
+                    packet.addFragment(frag);
+
+                    receivePackMap.put(packet.getPckId() , packet);
+                }else{
+                    packet.addFragment(frag);
+                }
+
+                if(packet.checkPacketComplete()){ //完整
+                    //do callback
+                    if(callback != null){
+                        final byte[] dataBuf = packet.extractData();
+                        callback.onReceiveData(packet.getWhat() , dataBuf);
+                    }
+                    receivePackMap.remove(packet.getPckId());
                 }
             } catch (IOException e) {
                 // e.printStackTrace();

@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat;
 import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.config.RequestCode;
 import panyi.xyz.videoeditor.util.LogUtil;
+import panyi.xyz.videoeditor.util.UuidUtil;
 import panyi.xyz.videoeditor.view.widget.TextRenderHelper;
 
 public class MainActivity extends AppCompatActivity {
