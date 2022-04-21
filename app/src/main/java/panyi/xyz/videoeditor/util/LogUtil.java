@@ -6,17 +6,19 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
+ *
  *  LogUtil
  */
 public final class LogUtil {
     private static Logger logger = Logger.getLogger(LogUtil.class.getName());
+    public static final String TAG = LogUtil.class.getSimpleName();
 
     public static void i(final String msg){
-        logger.log(Level.INFO , genLogMessage(genLogMessage(msg)));
+        Log.i(TAG , genLogMessage(genLogMessage(msg)));
     }
 
     public static void w(final String msg){
-        logger.log(Level.WARNING , genLogMessage(genLogMessage(msg)));
+        Log.w(TAG , genLogMessage(genLogMessage(msg)));
     }
 
 

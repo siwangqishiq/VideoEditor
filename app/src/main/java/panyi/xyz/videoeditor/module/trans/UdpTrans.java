@@ -30,7 +30,8 @@ public class UdpTrans extends  Thread implements ITrans {
     private ExecutorService sendTaskThreadPool;
 
     private byte[] receiveBuf;
-    private Map<Long , Packet> receivePackMap = new HashMap<Long,Packet>();
+
+    private Packet packet;
 
     @Override
     public void startServer(int port, OnReceiveCallback callback) {
@@ -47,15 +48,22 @@ public class UdpTrans extends  Thread implements ITrans {
             return -1;
         }
 
-        sendTaskThreadPool.submit(()->{
-            //分包
-            List<Fragment> fragmentList = Packet.sliceData(data , what);
+//        sendTaskThreadPool.submit(()->{
+//            //分包
+//            List<Fragment> fragmentList = Packet.sliceData(data , what);
+//
+//            for(Fragment frag : fragmentList){
+//                LogUtil.log("send frag: " + frag);
+//                sendByUdpTrans(remoteAddress , remotePort , frag.toByteArray());
+//            }//end for each
+//        });
 
-            for(Fragment frag : fragmentList){
-                LogUtil.log("send frag: " + frag);
-                sendByUdpTrans(remoteAddress , remotePort , frag.toByteArray());
-            }//end for each
-        });
+        List<Fragment> fragmentList = Packet.sliceData(data , what);
+
+        for(Fragment frag : fragmentList){
+           // LogUtil.log("send frag: " + frag);
+            sendByUdpTrans(remoteAddress , remotePort , frag.toByteArray());
+        }//end for each
         return 0;
     }
 
@@ -64,6 +72,10 @@ public class UdpTrans extends  Thread implements ITrans {
             DatagramPacket sendPacket = new DatagramPacket(sendData , 0 , sendData.length);
             sendPacket.setPort(remotePort);
             sendPacket.setAddress(InetAddress.getByName(remoteAddress));
+
+            if(socket.isClosed()){
+                return;
+            }
             socket.send(sendPacket);
         } catch (IOException e) {
             e.printStackTrace();
@@ -74,14 +86,13 @@ public class UdpTrans extends  Thread implements ITrans {
     @Override
     public void close() {
         isRunning.set(false);
-        receivePackMap.clear();
 
         if(socket != null){
             socket.close();
         }
 
         if(sendTaskThreadPool != null){
-            sendTaskThreadPool.shutdown();
+            sendTaskThreadPool.shutdownNow();
         }
     }
 
@@ -114,15 +125,17 @@ public class UdpTrans extends  Thread implements ITrans {
                 final int len = pack.getLength();
 
                 final Fragment frag = Fragment.decode(receiveBuf , 0 , len);
-                LogUtil.log("frag : " + frag);
+                // LogUtil.log("frag : " + frag);
 
-                Packet packet = receivePackMap.get(frag.pckId);
                 if(packet == null){
                     packet = new Packet(frag.pckId , frag.fragCount , frag.totalSize , frag.what);
                     packet.addFragment(frag);
+                }else if(packet.getPckId() != frag.pckId){
+                    // handleLosePacket(packet);
 
-                    receivePackMap.put(packet.getPckId() , packet);
-                }else{
+                    packet = new Packet(frag.pckId , frag.fragCount , frag.totalSize , frag.what);
+                    packet.addFragment(frag);
+                } else{
                     packet.addFragment(frag);
                 }
 
@@ -132,7 +145,8 @@ public class UdpTrans extends  Thread implements ITrans {
                         final byte[] dataBuf = packet.extractData();
                         callback.onReceiveData(packet.getWhat() , dataBuf);
                     }
-                    receivePackMap.remove(packet.getPckId());
+                    packet = null;
+//                    receivePackMap.remove(packet.getPckId());
                 }
             } catch (IOException e) {
                 // e.printStackTrace();
@@ -144,5 +158,10 @@ public class UdpTrans extends  Thread implements ITrans {
             socket.close();
         }
         LogUtil.log("socket closed!");
+    }
+
+    private void handleLosePacket(Packet packet){
+        LogUtil.log("throw packet " + packet);
+        callback.onReceiveData(packet.getWhat() , packet.extractDataWithError());
     }
 }

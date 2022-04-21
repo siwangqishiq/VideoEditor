@@ -12,7 +12,7 @@ import panyi.xyz.videoeditor.util.UuidUtil;
  * 网络分包 合包操作
  */
 public class Packet {
-    public static final int BUF_SIZE = 50 * 1024; //50k 实体数据区buf
+    public static final int BUF_SIZE = 60 * 1024; //60k 实体数据区buf
     public static final int HEAD_SIZE = 8 + 4 + 4 +4 + 4 + 4;// 包ID + 包总大小 + 分片大小+ 分片数量 + 分片ID +包类型
     public static final int FRAGMENT_SIZE = HEAD_SIZE + BUF_SIZE;
 
@@ -22,6 +22,16 @@ public class Packet {
     private int what;
 
     private Map<Integer , Fragment> fragMap = new HashMap<Integer , Fragment>();
+
+    @Override
+    public String toString() {
+        return "Packet{" +
+                "pckId=" + pckId +
+                ", p( " + fragMap.size() +
+                " / " + fragCount +
+                " ) what=" + what +
+                '}';
+    }
 
     public Packet(long pckId, int fragCount, int totalSize, int what) {
         this.pckId = pckId;
@@ -57,6 +67,24 @@ public class Packet {
         for(int i = 0; i < fragCount;i++){
             Fragment frag = fragMap.get(i);
             buf.put(frag.dataBuf);
+        }//end for i
+
+        buf.flip();
+        byte retBuf[] = new byte[buf.remaining()];
+        buf.get(retBuf);
+        return retBuf;
+    }
+
+    public byte[] extractDataWithError(){
+        ByteBuffer buf = ByteBuffer.allocate(totalSize);
+
+        for(int i = 0; i < fragCount;i++){
+            Fragment frag = fragMap.get(i);
+            if(frag == null){
+
+            }else{
+                buf.put(frag.dataBuf);
+            }
         }//end for i
 
         buf.flip();

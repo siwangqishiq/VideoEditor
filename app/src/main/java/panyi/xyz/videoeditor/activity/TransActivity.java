@@ -6,10 +6,17 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.ImageFormat;
+import android.graphics.Rect;
+import android.graphics.YuvImage;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.text.TextUtils;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageView;
@@ -46,6 +53,9 @@ import static panyi.xyz.videoeditor.config.RequestCode.ACTIVITY_REQUEST_SELECT_V
 public class TransActivity extends AppCompatActivity implements ITrans.OnReceiveCallback {
 
     public static final int PORT = 4444;
+
+    public static final int TYPE_META = 101;
+    public static final int TYPE_VIDEO = 100;
 
     public static void start(Activity context){
         Intent it = new Intent(context , TransActivity.class);
@@ -127,8 +137,139 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
 
         final SelectFileItem selectFile = (SelectFileItem)data.getSerializableExtra("data");
         LogUtil.log("select file :" + selectFile.path +"    size: " + selectFile.size +" duration:" + selectFile.duration);
+        // prepare(selectFile);
 
-        prepare(selectFile);
+        prepareAndStart(selectFile);
+    }
+
+    private void prepareAndStart(final SelectFileItem fileItem){
+        try {
+            mVideoExtractor = MediaUtil.createMediaExtractorByMimeType(fileItem.path , MediaUtil.TYPE_VIDEO);
+        } catch (IOException e) {
+            e.printStackTrace();
+            mVideoExtractor = null;
+        }
+
+        if(mVideoExtractor == null){
+            Toast.makeText(this , R.string.video_format_no_support , Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        MediaFormat mediaFormat = mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex());
+        LogUtil.log(mediaFormat.toString());
+
+        try {
+            mVideoCodec = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME));
+
+
+            imgWidth = mediaFormat.getInteger(MediaFormat.KEY_WIDTH );
+            imgHeight = mediaFormat.getInteger(MediaFormat.KEY_HEIGHT);
+
+            sendVideoMeta(imgWidth , imgHeight);
+
+            mVideoCodec.configure(mediaFormat , null, null ,0);
+
+            HandlerThread videoDecodeThread = new HandlerThread("video decode");
+            videoDecodeThread.start();
+            mVideoCodec.setCallback(new MediaCodec.Callback() {
+                private byte[] yuvData = new byte[10 * 1024 * 1024];
+
+                @Override
+                public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
+                    if(!isRunning){
+                        return;
+                    }
+
+                    if(index < 0){
+                        return;
+                    }
+
+                    ByteBuffer buf = codec.getInputBuffer(index);
+                    final int readSize = mVideoExtractor.readSampleData(buf , 0);
+
+                    if(readSize > 0){
+                        if(!isRunning){
+                            return;
+                        }
+                        codec.queueInputBuffer(index , 0 , readSize , mVideoExtractor.getSampleTime() , 0);
+                        mVideoExtractor.advance();
+                    }else{
+                        LogUtil.log("video end!");
+                        codec.queueInputBuffer(index , 0 , 0 , 0 , MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                    }
+                }
+
+                @Override
+                public void onOutputBufferAvailable(@NonNull MediaCodec codec, int outputBufferId, @NonNull MediaCodec.BufferInfo info) {
+                    if(!isRunning){
+                        return;
+                    }
+
+                    ByteBuffer buf = codec.getOutputBuffer(outputBufferId);
+                    // LogUtil.log("send buf size: " + buf.remaining());
+//                    byte[] yuvData = new byte[buf.remaining()];
+
+                    buf.get(yuvData , 0 , buf.remaining());
+
+                    if(mTrans != null){
+                        try {
+                            mTrans.sendData(remoteAddress(),PORT ,TYPE_VIDEO, yuvData);
+                        } catch (UnknownHostException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    codec.releaseOutputBuffer(outputBufferId , false);
+                }
+
+                @Override
+                public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
+                    LogUtil.i("decode error " + e.toString());
+                }
+
+                @Override
+                public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
+                    LogUtil.i("decode onOutputFormatChanged " + format);
+                }
+            } ,new Handler(videoDecodeThread.getLooper()));
+
+            isRunning = true;
+            mVideoCodec.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void sendVideoMeta(int videoWidth , int videoHeight){
+        if(mTrans == null){
+            return;
+        }
+
+        ByteBuffer buf = ByteBuffer.allocate(4 + 4);
+        buf.putInt(videoWidth);
+        buf.putInt(videoHeight);
+
+        buf.flip();
+        byte[] data = new byte[buf.remaining()];
+        buf.get(data);
+
+        final String address = remoteAddress();
+        new Thread(()->{
+            try {
+                mTrans.sendData(address , PORT , TYPE_META ,  data);
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+
+    private String remoteAddress(){
+        String content = mContentText.getText().toString().trim();
+        if(TextUtils.isEmpty(content)){
+            return "127.0.0.1";
+        }
+
+        return content;
     }
 
     private void prepare(final SelectFileItem fileItem){
@@ -163,7 +304,7 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
                     buf.get(sendBuf);
                     if(mTrans != null){
                         try {
-                            mTrans.sendData("127.0.0.1" , PORT , 0 , sendBuf);
+                            mTrans.sendData(mContentText.getText().toString() , PORT , 0 , sendBuf);
                         } catch (UnknownHostException e) {
                             e.printStackTrace();
                         }
@@ -177,10 +318,10 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
             LogUtil.log("video end!s" + mVideoExtractor.getSampleTime());
         }).start();
 
-       // initMediaCodec(mediaFormat);
+//        initMediaCodec(mediaFormat);
     }
 
-//    private void initMediaCodec(MediaFormat mediaFormat){
+    private void initMediaCodec(MediaFormat mediaFormat){
 //        try {
 //            mVideoCodec = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME));
 ////            mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE , 65536);
@@ -247,26 +388,26 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
 //        } catch (IOException e) {
 //            e.printStackTrace();
 //        }
-//    }
+    }
 
     private void sendData(){
 //        final String content = "你好世界!" + System.currentTimeMillis();
 
-        Bitmap bitmap = BitmapFactory.decodeResource(getResources() , R.drawable.t2);
-        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-        byte[] byteArray = stream.toByteArray();
-        bitmap.recycle();
-        try {
-            mTrans.sendData(mContentText.getText().toString().trim() , PORT , 233 , byteArray);
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
+//        Bitmap bitmap = BitmapFactory.decodeResource(getResources() , R.drawable.t2);
+//        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+//        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+//        byte[] byteArray = stream.toByteArray();
+//        bitmap.recycle();
+//        try {
+//            mTrans.sendData(mContentText.getText().toString().trim() , PORT , 233 , byteArray);
+//        } catch (UnknownHostException e) {
+//            e.printStackTrace();
+//        }
     }
 
     private void initTrans(){
         mTrans = new UdpTrans();
-        mTrans.startServer(4444 , this);
+        mTrans.startServer(PORT , this);
     }
 
     @Override
@@ -297,14 +438,36 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
 ////        LogUtil.log("get data size = " + data.length);
 //    }
 
+    int imgWidth = 1920;
+    int imgHeight = 1080;
+
     @Override
     public void onReceiveData(int what, byte[] data) {
-        final Bitmap bitmap = BitmapFactory.decodeByteArray(data , 0 , data.length);
-
-        runOnUiThread(()->{
-            // mContentText.setText(content);
-            imageView.setImageBitmap(bitmap);
-        });
         LogUtil.log("get data size = " + data.length);
+        if(what == TYPE_META){
+            ByteBuffer buf = ByteBuffer.wrap(data);
+//            buf.flip();
+
+            imgWidth = buf.getInt();
+            imgHeight = buf.getInt();
+
+            LogUtil.L("meta" , "width x height " + imgWidth +" " + imgHeight);
+        }else if(what == TYPE_VIDEO){
+            YuvImage yuvImage = new YuvImage(data , ImageFormat.NV21 , imgWidth,imgHeight,null);
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            yuvImage.compressToJpeg(new Rect(0, 0, imgWidth, imgHeight), 100, out);
+
+            byte[] imageBytes = out.toByteArray();
+            final Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+
+            // final Bitmap bitmap = BitmapFactory.decodeByteArray(data , 0 , data.length);
+
+            runOnUiThread(()->{
+                // mContentText.setText(content);
+                imageView.setImageBitmap(bitmap);
+            });
+        }
+
     }
 }//end class

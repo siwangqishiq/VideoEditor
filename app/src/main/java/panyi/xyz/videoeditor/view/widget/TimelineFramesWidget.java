@@ -23,7 +23,7 @@ public class TimelineFramesWidget implements IRender , SurfaceTexture.OnFrameAva
     private FloatBuffer positionBuf;
     private FloatBuffer textureBuf;
 
-    private final int FRAME_SIZE = 1;
+    private final int FRAME_SIZE = 32;
 
     private int posBufId;
     private int textureBufId;
@@ -72,8 +72,8 @@ public class TimelineFramesWidget implements IRender , SurfaceTexture.OnFrameAva
 
         float x = 0;
         float y= 0;
-        float width = contextView.camera.viewWidth;
-        float height = contextView.camera.viewHeight;
+        float width = contextView.camera.viewWidth / 10;
+        float height = contextView.camera.viewHeight / 10;
 
         for(int i = 0 ; i < FRAME_SIZE ; i ++){
             RenderCube renderCube = new RenderCube();
