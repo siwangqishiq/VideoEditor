@@ -11,18 +11,27 @@ import android.graphics.Path;
 import android.graphics.Rect;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.text.StaticLayout;
 import android.view.Choreographer;
+import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+
+import java.sql.Array;
+import java.util.ArrayList;
+import java.util.List;
 
 import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.config.RequestCode;
 import panyi.xyz.videoeditor.util.LogUtil;
+import panyi.xyz.videoeditor.util.MediaUtil;
 import panyi.xyz.videoeditor.util.UuidUtil;
 import panyi.xyz.videoeditor.view.widget.TextRenderHelper;
 
@@ -38,10 +47,6 @@ public class MainActivity extends AppCompatActivity {
             VideoEditorActivity.start(MainActivity.this);
         });
 
-//        for(int i = 0 ; i < MediaCodecList.getCodecCount() ; i++){
-//            MediaCodecInfo info = MediaCodecList.getCodecInfoAt(i);
-            // LogUtil.log(info.getName() +"  " +info.getSupportedTypes() + " " + info.toString());
-//        }
 
 //        ImageView imgView = findViewById(R.id.show_image);
 //        imgView.setImageBitmap(TextRenderHelper.buildFontBit(-1));
@@ -53,6 +58,33 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.trans_btn).setOnClickListener((v)->{
             TransActivity.start(MainActivity.this);
         });
+
+        fillMediaSupports(false , findViewById(R.id.support_decode_formats));
+        fillMediaSupports(true , findViewById(R.id.support_encode_formats));
+    }
+
+    private void fillMediaSupports(boolean encode , ViewGroup viewGroup){
+        MediaCodecList codecList = new MediaCodecList(MediaCodecList.ALL_CODECS);
+        MediaCodecInfo infos[] = codecList.getCodecInfos();
+        List<String> mediaList = new ArrayList<String>(16);
+        for(MediaCodecInfo info :  infos){
+            if(encode == info.isEncoder()){ //encode
+                mediaList.add(info.getName() + " mime : " + MediaUtil.supportTypesStr(info.getSupportedTypes()));
+            }
+        }//end for each
+
+        fillMediaList(viewGroup , mediaList);
+    }
+
+    private void fillMediaList(ViewGroup viewgroup , List<String> mediaList){
+        viewgroup.removeAllViews();
+
+        for(String mediaName : mediaList){
+            TextView textView = new TextView(this);
+            textView.setText(mediaName);
+
+            viewgroup.addView(textView);
+        }
     }
 
     private void requestPermission(){

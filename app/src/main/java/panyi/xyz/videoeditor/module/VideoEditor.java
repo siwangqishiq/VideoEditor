@@ -115,9 +115,7 @@ public class VideoEditor {
         MediaFormat mediaFormat = mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex());
         LogUtil.log(mediaFormat.toString());
         mVideoInfo = VideoInfo.build(mediaFormat);
-
-        LogUtil.log("video meta: " + mVideoInfo.toString());
-
+        LogUtil.L("videoInfo" , "mime : " + mediaFormat.getString(MediaFormat.KEY_MIME));
 
         addGLView();
 

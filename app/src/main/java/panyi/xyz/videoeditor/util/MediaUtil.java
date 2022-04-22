@@ -68,4 +68,12 @@ public class MediaUtil {
         }
         return extractor;
     }
+
+    public static String supportTypesStr(String[] agrs){
+        StringBuffer sb = new StringBuffer();
+        for(String arg : agrs){
+            sb.append(arg).append(" ");
+        }
+        return sb.toString();
+    }
 }

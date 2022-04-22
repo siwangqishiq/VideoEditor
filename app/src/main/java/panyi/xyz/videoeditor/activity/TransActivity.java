@@ -17,6 +17,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.text.TextUtils;
+import android.view.Surface;
+import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageView;
@@ -77,6 +79,10 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
 
     private SurfaceView mRenderView;
 
+    private MediaFormat mediaFormat;
+
+    private Surface mSurface;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -94,7 +100,8 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
             startSelectFile();
         });
 
-//        mRenderView = findViewById(R.id.render_view);
+        mRenderView = findViewById(R.id.render_view);
+
         initTrans();
     }
 
@@ -137,9 +144,8 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
 
         final SelectFileItem selectFile = (SelectFileItem)data.getSerializableExtra("data");
         LogUtil.log("select file :" + selectFile.path +"    size: " + selectFile.size +" duration:" + selectFile.duration);
-        // prepare(selectFile);
-
-        prepareAndStart(selectFile);
+         prepare(selectFile);
+//        prepareAndStart(selectFile);
     }
 
     private void prepareAndStart(final SelectFileItem fileItem){
@@ -273,121 +279,137 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
     }
 
     private void prepare(final SelectFileItem fileItem){
-        new Thread(()->{
-            try {
-                mVideoExtractor = MediaUtil.createMediaExtractorByMimeType(fileItem.path , MediaUtil.TYPE_VIDEO);
-            } catch (IOException e) {
-                e.printStackTrace();
-                mVideoExtractor = null;
-            }
+        try {
+            mVideoExtractor = MediaUtil.createMediaExtractorByMimeType(fileItem.path , MediaUtil.TYPE_VIDEO);
+        } catch (IOException e) {
+            e.printStackTrace();
+            mVideoExtractor = null;
+        }
 
-            if(mVideoExtractor == null){
-                Toast.makeText(this , R.string.video_format_no_support , Toast.LENGTH_LONG).show();
-                return;
-            }
+        if(mVideoExtractor == null){
+            Toast.makeText(this , R.string.video_format_no_support , Toast.LENGTH_LONG).show();
+            return;
+        }
 
-            MediaFormat mediaFormat = mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex());
-            LogUtil.log(mediaFormat.toString());
+        mediaFormat = mVideoExtractor.getTrackFormat(mVideoExtractor.getSampleTrackIndex());
 
-            isRunning = true;
-
-            ByteBuffer buf = ByteBuffer.allocate(1024* 1024);
-
-            while(isRunning){
-                LogUtil.log("video time: " + mVideoExtractor.getSampleTime());
-                buf.position(0);
-                int readSize = mVideoExtractor.readSampleData(buf , 0);
-                if(readSize > 0){
-                    LogUtil.log("readSize : " + readSize +"  buf size: " + buf.remaining());
-
-                    byte[] sendBuf = new byte[buf.remaining()];
-                    buf.get(sendBuf);
-                    if(mTrans != null){
-                        try {
-                            mTrans.sendData(mContentText.getText().toString() , PORT , 0 , sendBuf);
-                        } catch (UnknownHostException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    mVideoExtractor.advance();
-                }else{
-                    break;
-                }
-            }//end while
-            LogUtil.log("video end!s" + mVideoExtractor.getSampleTime());
-        }).start();
-
-//        initMediaCodec(mediaFormat);
-    }
-
-    private void initMediaCodec(MediaFormat mediaFormat){
-//        try {
-//            mVideoCodec = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME));
-////            mediaFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE , 65536);
-////            mVideoCodec.configure(mediaFormat , new Surface(videoWidget.surfaceTexture), null ,0);
-//            mVideoCodec.configure(mediaFormat , null, null ,0);
+//        new Thread(()->{
+//            LogUtil.log(mediaFormat.toString());
+//            isRunning = true;
+//            ByteBuffer buf = ByteBuffer.allocate(1024* 1024);
 //
-//            mVideoCodec.setCallback(new MediaCodec.Callback() {
-//                @Override
-//                public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
-//                    if(!isRunning){
-//                        return;
-//                    }
+//            while(isRunning){
+//                LogUtil.log("video time: " + mVideoExtractor.getSampleTime());
+//                buf.position(0);
+//                int readSize = mVideoExtractor.readSampleData(buf , 0);
+//                if(readSize > 0){
+//                    LogUtil.log("readSize : " + readSize +"  buf size: " + buf.remaining());
 //
-//                    if(index < 0){
-//                        return;
-//                    }
-//
-//                    ByteBuffer buf = codec.getInputBuffer(index);
-//                    final int readSize = mVideoExtractor.readSampleData(buf , 0);
-//
-//                    if(readSize > 0){
-//                        codec.queueInputBuffer(index , 0 , readSize , mVideoExtractor.getSampleTime() , 0);
-//                        mVideoExtractor.advance();
-//                    }else{
-//                        LogUtil.log("video end!");
-//                        codec.queueInputBuffer(index , 0 , 0 , 0 , MediaCodec.BUFFER_FLAG_END_OF_STREAM);
-//                    }
-//                }
-//
-//                @Override
-//                public void onOutputBufferAvailable(@NonNull MediaCodec codec, int outputBufferId, @NonNull MediaCodec.BufferInfo info) {
-//                    if(!isRunning){
-//                        return;
-//                    }
-//
-//                    ByteBuffer buf = codec.getOutputBuffer(outputBufferId);
-//                    LogUtil.log("send buf size: " + buf.remaining());
-//                    byte[] yuvData = new byte[buf.remaining()];
-//                    buf.get(yuvData);
-//
+//                    byte[] sendBuf = new byte[buf.remaining()];
+//                    buf.get(sendBuf);
 //                    if(mTrans != null){
 //                        try {
-//                            mTrans.sendData("127.0.0.1",PORT , yuvData);
+//                            mTrans.sendData(mContentText.getText().toString() , PORT , 0 , sendBuf);
 //                        } catch (UnknownHostException e) {
 //                            e.printStackTrace();
 //                        }
 //                    }
 //
-//                    codec.releaseOutputBuffer(outputBufferId , false);
+//                    mVideoExtractor.advance();
+//                }else{
+//                    break;
 //                }
-//
-//                @Override
-//                public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
-//                    LogUtil.i("decode error " + e.toString());
-//                }
-//
-//                @Override
-//                public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
-//                    LogUtil.i("decode onOutputFormatChanged " + format);
-//                }
-//            });
-//            mVideoCodec.start();
-//            isRunning = true;
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        }
+//            }//end while
+//            LogUtil.log("video end!s" + mVideoExtractor.getSampleTime());
+//        }).start();
+
+        mRenderView.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(@NonNull SurfaceHolder holder) {
+                mSurface = holder.getSurface();
+            }
+
+            @Override
+            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
+                mSurface = holder.getSurface();
+
+                initMediaCodec(mediaFormat);
+            }
+
+            @Override
+            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+                LogUtil.log("release SurfaceHolder");
+                mSurface = null;
+            }
+        });
+
+    }
+
+    private void initMediaCodec(MediaFormat mediaFormat){
+        try {
+            mVideoCodec = MediaCodec.createDecoderByType(mediaFormat.getString(MediaFormat.KEY_MIME));
+            mVideoCodec.configure(mediaFormat , mSurface, null ,0);
+
+            mVideoCodec.setCallback(new MediaCodec.Callback() {
+                @Override
+                public void onInputBufferAvailable(@NonNull MediaCodec codec, int index) {
+                    if(!isRunning){
+                        return;
+                    }
+
+                    if(index < 0){
+                        return;
+                    }
+
+                    ByteBuffer buf = codec.getInputBuffer(index);
+                    final int readSize = mVideoExtractor.readSampleData(buf , 0);
+
+                    if(readSize > 0){
+                        codec.queueInputBuffer(index , 0 , readSize , mVideoExtractor.getSampleTime() , 0);
+                        mVideoExtractor.advance();
+                    }else{
+                        LogUtil.log("video end!");
+                        codec.queueInputBuffer(index , 0 , 0 , 0 , MediaCodec.BUFFER_FLAG_END_OF_STREAM);
+                    }
+                }
+
+                @Override
+                public void onOutputBufferAvailable(@NonNull MediaCodec codec, int outputBufferId, @NonNull MediaCodec.BufferInfo info) {
+                    if(!isRunning){
+                        return;
+                    }
+
+                    ByteBuffer buf = codec.getOutputBuffer(outputBufferId);
+                    LogUtil.log("send buf size: " + buf.remaining());
+                    byte[] yuvData = new byte[buf.remaining()];
+                    buf.get(yuvData);
+
+//                    if(mTrans != null){
+//                        try {
+//                            mTrans.sendData("127.0.0.1",PORT ,  0 ,yuvData);
+//                        } catch (UnknownHostException e) {
+//                            e.printStackTrace();
+//                        }
+//                    }
+
+                    codec.releaseOutputBuffer(outputBufferId , true);
+                }
+
+                @Override
+                public void onError(@NonNull MediaCodec codec, @NonNull MediaCodec.CodecException e) {
+                    LogUtil.i("decode error " + e.toString());
+                }
+
+                @Override
+                public void onOutputFormatChanged(@NonNull MediaCodec codec, @NonNull MediaFormat format) {
+                    LogUtil.i("decode onOutputFormatChanged " + format);
+                }
+            });
+            mVideoCodec.start();
+            isRunning = true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void sendData(){
