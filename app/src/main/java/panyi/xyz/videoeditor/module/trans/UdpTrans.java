@@ -1,5 +1,7 @@
 package panyi.xyz.videoeditor.module.trans;
 
+import android.os.Looper;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -61,8 +63,15 @@ public class UdpTrans extends  Thread implements ITrans {
         List<Fragment> fragmentList = Packet.sliceData(data , what);
 
         for(Fragment frag : fragmentList){
-           // LogUtil.log("send frag: " + frag);
+//            LogUtil.log("send frag: " + frag);
             sendByUdpTrans(remoteAddress , remotePort , frag.toByteArray());
+
+            //delay 控制发送流量   UDP协议 若不加限制 丢包严重
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }//end for each
         return 0;
     }
@@ -125,13 +134,13 @@ public class UdpTrans extends  Thread implements ITrans {
                 final int len = pack.getLength();
 
                 final Fragment frag = Fragment.decode(receiveBuf , 0 , len);
-                // LogUtil.log("frag : " + frag);
+//                 LogUtil.log("frag : " + frag);
 
                 if(packet == null){
                     packet = new Packet(frag.pckId , frag.fragCount , frag.totalSize , frag.what);
                     packet.addFragment(frag);
                 }else if(packet.getPckId() != frag.pckId){
-                    // handleLosePacket(packet);
+                     handleLosePacket(packet);
 
                     packet = new Packet(frag.pckId , frag.fragCount , frag.totalSize , frag.what);
                     packet.addFragment(frag);
@@ -161,7 +170,7 @@ public class UdpTrans extends  Thread implements ITrans {
     }
 
     private void handleLosePacket(Packet packet){
-        LogUtil.log("throw packet " + packet);
-        callback.onReceiveData(packet.getWhat() , packet.extractDataWithError());
+        LogUtil.L("throw package" , "throw packet " + packet);
+        // callback.onReceiveData(packet.getWhat() , packet.extractDataWithError());
     }
 }
