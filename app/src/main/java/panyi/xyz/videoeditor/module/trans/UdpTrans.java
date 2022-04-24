@@ -12,8 +12,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import panyi.xyz.videoeditor.module.trans.ITrans;
@@ -35,13 +37,51 @@ public class UdpTrans extends  Thread implements ITrans {
 
     private Packet packet;
 
+    private AtomicBoolean isSendThreadRunning = new AtomicBoolean(false);
+
+    private LinkedBlockingQueue<SendMsg> sendQueue = new LinkedBlockingQueue<SendMsg>();
+
+    public static class SendMsg{
+        String remoteAddress;
+        int remotePort;
+        byte[] data;
+
+        public SendMsg(String remoteAddress, int remotePort, byte[] data) {
+            this.remoteAddress = remoteAddress;
+            this.remotePort = remotePort;
+            this.data = data;
+        }
+    }
+
+    public class UdpSendThread extends Thread{
+        @Override
+        public void run() {
+            while(isSendThreadRunning.get()){
+                try {
+                    SendMsg msg = sendQueue.take();
+                    // LogUtil.L("send queue" , "send size:" + msg.data.length);
+                    sendByUdpTrans(msg.remoteAddress , msg.remotePort , msg.data);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }//end while
+        }
+    }
+
     @Override
     public void startServer(int port, OnReceiveCallback callback) {
         this.port = port;
         this.callback = callback;
 
-        //启动网络线程
+        //启动网络接收线程
         start();
+
+        startSendThread();
+    }
+
+    private void startSendThread(){
+        isSendThreadRunning.set(true);
+        new UdpSendThread().start();
     }
 
     @Override
@@ -64,11 +104,17 @@ public class UdpTrans extends  Thread implements ITrans {
 
         for(Fragment frag : fragmentList){
 //            LogUtil.log("send frag: " + frag);
-            sendByUdpTrans(remoteAddress , remotePort , frag.toByteArray());
+            // sendByUdpTrans(remoteAddress , remotePort , frag.toByteArray());
+
+            try {
+                sendQueue.put(new SendMsg(remoteAddress , remotePort , frag.toByteArray()));
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
 
             //delay 控制发送流量   UDP协议 若不加限制 丢包严重
             try {
-                Thread.sleep(50);
+                Thread.sleep(30);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -94,6 +140,8 @@ public class UdpTrans extends  Thread implements ITrans {
 
     @Override
     public void close() {
+        sendQueue.clear();
+        isSendThreadRunning.set(false);
         isRunning.set(false);
 
         if(socket != null){
@@ -123,6 +171,7 @@ public class UdpTrans extends  Thread implements ITrans {
         sendTaskThreadPool = Executors.newFixedThreadPool(1);
 
         isRunning.set(true);
+
         while(isRunning.get()){
             if(receiveBuf == null){
                 receiveBuf = new byte[Packet.FRAGMENT_SIZE];
