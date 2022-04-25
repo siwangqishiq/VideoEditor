@@ -17,12 +17,10 @@ package panyi.xyz.videoeditor.fragment;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -31,9 +29,6 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bumptech.glide.Glide;
-
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,10 +38,10 @@ import panyi.xyz.videoeditor.module.MediaQuery;
 import panyi.xyz.videoeditor.util.TimeUtil;
 
 /**
- * selec a file for video image edit
+ * selec a file for audio edit
  *
  */
-public class FileSelectFragment extends Fragment {
+public class AudioFileSelectFragment extends Fragment {
 	private List<SelectFileItem> mFileItemList = new ArrayList<SelectFileItem>(8);
 
 	private RecyclerView mListView;
@@ -64,13 +59,13 @@ public class FileSelectFragment extends Fragment {
 		super.onViewCreated(view, savedInstanceState);
 		mListView = getView().findViewById(R.id.file_list_view);
 
-		mListView.setLayoutManager(new GridLayoutManager(getContext() , 3));
+		mListView.setLayoutManager(new GridLayoutManager(getContext() , 1));
 		mListView.setAdapter(new FileItemListAdapter());
 	}
 
 	private void loadVideoFileData(){
 		mFileItemList.clear();
-		mFileItemList.addAll(MediaQuery.queryVideoFileData(getActivity()));
+		mFileItemList.addAll(MediaQuery.queryAudioFile(getActivity()));
 	}
 
 	private void onClickItem(final int pos , final SelectFileItem fileItem){
@@ -88,7 +83,7 @@ public class FileSelectFragment extends Fragment {
 		@NonNull
 		@Override
 		public FileItemViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-			final View itemView = LayoutInflater.from(getActivity()).inflate(R.layout.view_select_file_item,
+			final View itemView = LayoutInflater.from(getActivity()).inflate(R.layout.view_select_audio_item,
 					parent, false);
 			return new FileItemViewHolder(itemView);
 		}
@@ -105,19 +100,19 @@ public class FileSelectFragment extends Fragment {
 	}
 
 	private class FileItemViewHolder extends RecyclerView.ViewHolder{
-		ImageView imgView;
-		TextView descTextView;
+		TextView nameText;
+		TextView durationText;
 
 		public FileItemViewHolder(@NonNull View itemView) {
 			super(itemView);
 
-			imgView = itemView.findViewById(R.id.file_image);
-			descTextView = itemView.findViewById(R.id.file_desc);
+			nameText = itemView.findViewById(R.id.audio_name);
+			durationText = itemView.findViewById(R.id.audio_duration);
 		}
 
 		public void refresh(final int pos , final SelectFileItem itemData){
-			descTextView.setText(TimeUtil.mediaTimeDuration(itemData.duration));
-			Glide.with(getContext()).load(Uri.fromFile(new File(itemData.path))).into(imgView);
+			nameText.setText(itemData.name);
+			durationText.setText(TimeUtil.mediaTimeDuration(itemData.duration));
 
 			itemView.setOnClickListener((v)->{
 				onClickItem(pos , itemData);

@@ -6,11 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.net.Uri;
 import android.os.Bundle;
 import android.view.ViewGroup;
-import android.widget.HorizontalScrollView;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,9 +16,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import com.bumptech.glide.Glide;
-
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +23,6 @@ import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.model.SelectFileItem;
 import panyi.xyz.videoeditor.module.VideoEditor;
 import panyi.xyz.videoeditor.util.LogUtil;
-import panyi.xyz.videoeditor.view.VideoEditorGLView;
 
 /**
  *
@@ -148,7 +141,7 @@ public class VideoEditorActivity extends AppCompatActivity {
      * 打开选择文件页
      */
     private void openSelectFile(){
-        SelectFileActivity.start(this , REQUEST_CODE_SELECT_FILE);
+        SelectFileActivity.startVideoSelector(this , REQUEST_CODE_SELECT_FILE);
     }
 
     @Override

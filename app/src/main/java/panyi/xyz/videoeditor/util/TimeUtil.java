@@ -8,7 +8,7 @@ public class TimeUtil {
      * @param time
      * @return
      */
-    public static String videoTimeDuration(long time){
+    public static String mediaTimeDuration(long time){
         long hour = time/(60*60*1000);
         long minute = (time - hour*60*60*1000)/(60*1000);
         long second = (time - hour*60*60*1000 - minute*60*1000)/1000;

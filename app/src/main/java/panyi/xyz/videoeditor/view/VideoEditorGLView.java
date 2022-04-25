@@ -6,7 +6,6 @@ import android.opengl.GLES20;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
-import android.view.Choreographer;
 
 import java.nio.IntBuffer;
 import java.util.ArrayList;
@@ -21,13 +20,8 @@ import panyi.xyz.videoeditor.util.OpenglEsUtils;
 import panyi.xyz.videoeditor.util.TimeUtil;
 import panyi.xyz.videoeditor.view.widget.Camera;
 import panyi.xyz.videoeditor.view.widget.IRender;
-import panyi.xyz.videoeditor.view.widget.RectWidget;
 import panyi.xyz.videoeditor.view.widget.TextRenderHelper;
 import panyi.xyz.videoeditor.view.widget.TimelineFramesWidget;
-import panyi.xyz.videoeditor.view.widget.VideoFrameCopyWidget;
-import panyi.xyz.videoeditor.view.widget.VideoFrameWidget;
-import panyi.xyz.videoeditor.view.widget.VideoTimeline;
-import panyi.xyz.videoeditor.view.widget.VideoWidget;
 
 /**
  *
@@ -175,7 +169,7 @@ public class VideoEditorGLView extends GLSurfaceView  implements GLSurfaceView.R
 
         textRenderHelper.renderText(String.valueOf(frameCount) , 20 , screenHeight - 300 , 300);
 
-        String showTime = TimeUtil.videoTimeDuration(currentTimeStamp);
+        String showTime = TimeUtil.mediaTimeDuration(currentTimeStamp);
         int strWidth = textRenderHelper.calculateTextSize(showTime , 300);
         textRenderHelper.renderText(showTime, screenWidth - strWidth , 0 , 300);
 

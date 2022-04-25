@@ -30,7 +30,7 @@ public class VideoInfo {
     public String toString() {
         return "VideoInfo{" +
                 "mime='" + mime + '\'' +
-                ", duration=" + TimeUtil.videoTimeDuration(duration) +
+                ", duration=" + TimeUtil.mediaTimeDuration(duration) +
                 ", width=" + width +
                 ", height=" + height +
                 ", sampleRate=" + sampleRate +

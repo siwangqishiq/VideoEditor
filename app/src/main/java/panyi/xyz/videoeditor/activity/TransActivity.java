@@ -4,15 +4,9 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -32,7 +26,6 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -47,7 +40,6 @@ import panyi.xyz.videoeditor.util.FileUtil;
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.MediaUtil;
 
-import static android.media.MediaExtractor.SAMPLE_FLAG_SYNC;
 import static panyi.xyz.videoeditor.config.RequestCode.ACTIVITY_REQUEST_SELECT_VEDIO_FILE;
 
 /**
@@ -129,7 +121,7 @@ public class TransActivity extends AppCompatActivity implements ITrans.OnReceive
 
     private void startSelectFile(){
         if(permissionCheck()){
-            SelectFileActivity.start(this , ACTIVITY_REQUEST_SELECT_VEDIO_FILE);
+            SelectFileActivity.startVideoSelector(this , ACTIVITY_REQUEST_SELECT_VEDIO_FILE);
         }
     }
 

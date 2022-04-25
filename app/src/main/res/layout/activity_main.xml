@@ -29,6 +29,12 @@
         android:layout_height="wrap_content"
         android:text="网络传输" />
 
+    <Button
+        android:id="@+id/list_audio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="音频选择" />
+
 <!--    <ImageView-->
 <!--        android:id="@+id/show_image"-->
 <!--        android:background="#33ff0000"-->

@@ -9,4 +9,7 @@ public class SelectFileItem implements Serializable {
     public int width;
     public int height;
     public long size;
+
+    public String bitrate;
+    public String album;
 }
