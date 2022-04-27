@@ -10,16 +10,14 @@ import android.os.Handler;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.MediaUtil;
 
 
-public class AudioPlayer extends Thread implements IAudioPlayer {
-    public static final int STATUS_IDLE = 0; //空闲
-    public static final int STATUS_PREPARED = 1; //准备完成   可以开始播放
-
+public class AudioPlayer implements IAudioPlayer {
     private AudioTrack mTrack;
 
     private MediaExtractor mExtractor;
@@ -28,13 +26,136 @@ public class AudioPlayer extends Thread implements IAudioPlayer {
 
     private AtomicBoolean isPlaying = new AtomicBoolean(false);
 
-    private int mStatus = STATUS_IDLE;
+    private int mStatus = STATE_IDLE;
 
     private IAudioPlayer.ProgressCallback mProgressCallback;
 
     private Handler mCallbackHandler;
 
-    private long mDurationTime = -1;
+    //总时长 微秒单位
+    private long mDurationTimeUs = -1;
+
+    private long mCurrentTimeUs = -1;
+
+    public static class AudioData{
+        byte data[];
+        long timeStamp;
+
+        public AudioData(byte[] data , long timeStamp) {
+            this.data = data;
+            this.timeStamp = timeStamp;
+        }
+    }
+
+    private LinkedBlockingQueue<AudioData> mBlockingQueue = new LinkedBlockingQueue<AudioData>(16);
+
+    private AudioPlayThread mAudioPlayThread;
+
+    private class AudioPlayThread extends Thread{
+        @Override
+        public void run() {
+            while(isPlaying.get()){
+                try {
+                    final AudioData audioData = mBlockingQueue.take();
+                    mCurrentTimeUs = audioData.timeStamp;
+
+                    mTrack.write(audioData.data , 0 , audioData.data.length);
+
+                    if(mProgressCallback != null){
+                        if(mCallbackHandler == null){
+                            mProgressCallback.onProgressUpdate(audioData.timeStamp / 1000 , mDurationTimeUs / 1000);
+                        }else{
+                            mCallbackHandler.post(()->{
+                                if(mProgressCallback == null){
+                                    return;
+                                }
+                                mProgressCallback.onProgressUpdate(audioData.timeStamp / 1000 , mDurationTimeUs / 1000);
+                            });
+                        }
+                    }
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }//end while
+        }
+    }
+
+    private class AudioDecodeThread extends Thread{
+        @Override
+        public void run() {
+            //prepare mediacodec
+            if(mCodec == null){
+                try {
+                    mCodec = MediaCodec.createDecoderByType(mMediaFormat.getString(MediaFormat.KEY_MIME));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                mCodec.configure(mMediaFormat , null , null , 0);
+                mCodec.start();
+            }
+
+            isPlaying.set(true);
+            mStatus = STATE_PLAYING;
+            mTrack.play();
+
+            //start  consumer thread 消费线程
+            mAudioPlayThread = new AudioPlayThread();
+            mAudioPlayThread.start();
+
+            while(isPlaying.get()){
+                try{
+                    int index = mCodec.dequeueInputBuffer(10_000);
+                    if (index >= 0) {
+                        ByteBuffer inputBuffer = mCodec.getInputBuffer(index);
+                        inputBuffer.clear();
+                        int readSize = mExtractor.readSampleData(inputBuffer , 0);
+
+                        if(readSize < 0){
+                            onReadFileEnd();
+                            break;
+                        }
+                        // LogUtil.L("decode audio" , "time: " + mExtractor.getSampleTime() +"  readsize: " + inputBuffer.remaining());
+                        mCodec.queueInputBuffer(index,
+                                0, inputBuffer.remaining(), mExtractor.getSampleTime(), 0);
+                    }
+
+                    MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
+                    int outputBufferIndex = mCodec.dequeueOutputBuffer(bufferInfo, 10_000);
+                    if (outputBufferIndex >= 0) {
+                        // LogUtil.L("decode audio" , "time : " + bufferInfo.presentationTimeUs);
+                        ByteBuffer outBuf = mCodec.getOutputBuffer(outputBufferIndex);
+                        // LogUtil.L("decode audio" , "outBuf : " + outBuf.remaining());
+                        final long currentTimeUs = bufferInfo.presentationTimeUs;
+
+                        byte[] audioData = new byte[outBuf.remaining()];
+                        outBuf.get(audioData);
+
+                        mBlockingQueue.put(new AudioData(audioData , currentTimeUs));
+//                    LogUtil.L("queue size" , " block queue size : " + mBlockingQueue.size());
+//                    mTrack.write(audioData ,0, audioData.length );
+
+                        mCodec.releaseOutputBuffer(outputBufferIndex, false);
+
+                        boolean hasData = mExtractor.advance();
+                        if(!hasData){
+                            onReadFileEnd();
+                            break;
+                        }
+                    }else if(outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED){
+                    }
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }//end while
+
+            isPlaying.set(false);
+            mStatus = STATE_PREPARED;
+        }
+
+        void onReadFileEnd(){
+            mExtractor.seekTo(0 , MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+        }
+    }
 
     @Override
     public void prepare(String path) {
@@ -52,18 +173,9 @@ public class AudioPlayer extends Thread implements IAudioPlayer {
         mMediaFormat = mExtractor.getTrackFormat(mExtractor.getSampleTrackIndex());
         LogUtil.L("info" , mMediaFormat.toString());
 
-        mDurationTime = mMediaFormat.getLong(MediaFormat.KEY_DURATION);
+        mDurationTimeUs = mMediaFormat.getLong(MediaFormat.KEY_DURATION);
 
-        mStatus = STATUS_PREPARED;
-    }
-
-    @Override
-    public void play() {
-        start();
-    }
-
-    @Override
-    public void run() {
+        mStatus = STATE_PREPARED;
 
         AudioTrack.Builder builder = new AudioTrack.Builder();
         builder.setAudioAttributes(new AudioAttributes.Builder()
@@ -80,78 +192,24 @@ public class AudioPlayer extends Thread implements IAudioPlayer {
         builder.setBufferSizeInBytes(AudioTrack.getMinBufferSize(mMediaFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE),
                 AudioFormat.CHANNEL_IN_STEREO , AudioFormat.ENCODING_PCM_16BIT));
         mTrack = builder.build();
+    }
 
-
-        //prepare mediacodec
-        try {
-            mCodec = MediaCodec.createDecoderByType(mMediaFormat.getString(MediaFormat.KEY_MIME));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        mCodec.configure(mMediaFormat , null , null , 0);
-        mCodec.start();
-
-        isPlaying.set(true);
-
-        mTrack.play();
-
-        while(isPlaying.get()){
-            try{
-                int index = mCodec.dequeueInputBuffer(10_000);
-                if (index >= 0) {
-                    ByteBuffer inputBuffer = mCodec.getInputBuffer(index);
-                    inputBuffer.clear();
-                    mExtractor.readSampleData(inputBuffer , 0);
-                    // LogUtil.L("decode audio" , "time: " + mExtractor.getSampleTime() +"  readsize: " + inputBuffer.remaining());
-                    mCodec.queueInputBuffer(index,
-                            0, inputBuffer.remaining(), mExtractor.getSampleTime(), 0);
-                }
-
-                MediaCodec.BufferInfo bufferInfo = new MediaCodec.BufferInfo();
-                int outputBufferIndex = mCodec.dequeueOutputBuffer(bufferInfo, 10_000);
-                if (outputBufferIndex >= 0) {
-                    // LogUtil.L("decode audio" , "time : " + bufferInfo.presentationTimeUs);
-                    ByteBuffer outBuf = mCodec.getOutputBuffer(outputBufferIndex);
-                    // LogUtil.L("decode audio" , "outBuf : " + outBuf.remaining());
-                    final long currentTimeUs = bufferInfo.presentationTimeUs;
-                    mTrack.write(outBuf ,outBuf.remaining(),
-                            AudioTrack.WRITE_BLOCKING );
-                    mCodec.releaseOutputBuffer(outputBufferIndex, false);
-
-                    if(mProgressCallback != null){
-                        if(mCallbackHandler == null){
-                            mProgressCallback.onProgressUpdate(currentTimeUs / 1000 , mDurationTime / 1000);
-                        }else{
-                            mCallbackHandler.post(()->{
-                                if(mProgressCallback == null){
-                                    return;
-                                }
-                                mProgressCallback.onProgressUpdate(currentTimeUs / 1000 , mDurationTime / 1000);
-                            });
-                        }
-                    }
-                }else if(outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED){
-                }
-
-                if(!isPlaying.get()){
-                    break;
-                }
-
-                boolean hasData = mExtractor.advance();
-                if(!hasData){
-                    break;
-                }
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-        }//end while
-
-        LogUtil.log("read file ended!");
+    @Override
+    public void play() {
+        new AudioDecodeThread().start();
     }
 
     @Override
     public void pause() {
+        if(mStatus != STATE_PLAYING){
+            return;
+        }
 
+        mBlockingQueue.clear();
+
+        isPlaying.set(false);
+        mStatus = STATE_PAUSED;
+        mTrack.pause();
     }
 
     @Override
@@ -174,5 +232,31 @@ public class AudioPlayer extends Thread implements IAudioPlayer {
     public void setProgressListener(ProgressCallback callback, Handler handler) {
         mCallbackHandler = handler;
         mProgressCallback = callback;
+    }
+
+    @Override
+    public int currentState() {
+        return mStatus;
+    }
+
+    @Override
+    public void seekTo(long timeUs) {
+        LogUtil.L("seek" , "timeUs = " + timeUs +"  " + mDurationTimeUs);
+
+        if(mStatus == STATE_IDLE || mExtractor == null){
+            return;
+        }
+
+        if(timeUs < 0 || timeUs > mDurationTimeUs){
+            return;
+        }
+
+        mBlockingQueue.clear();
+        mExtractor.seekTo(timeUs , MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+    }
+
+    @Override
+    public long getDurationTimeUs() {
+        return mDurationTimeUs;
     }
 }

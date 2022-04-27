@@ -39,4 +39,15 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         />
+
+    <ImageView
+        android:id="@+id/play_control_btn"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/time_line"
+        android:src="@drawable/ic_pause"
+        android:layout_marginTop="8dp"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        />
 </androidx.constraintlayout.widget.ConstraintLayout>
