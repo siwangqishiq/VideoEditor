@@ -1,6 +1,8 @@
 package panyi.xyz.videoeditor.activity;
 
 import android.Manifest;
+import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
@@ -8,6 +10,7 @@ import android.os.Bundle;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -16,6 +19,8 @@ import java.util.List;
 
 import panyi.xyz.videoeditor.R;
 import panyi.xyz.videoeditor.config.RequestCode;
+import panyi.xyz.videoeditor.model.SelectFileItem;
+import panyi.xyz.videoeditor.util.LogUtil;
 import panyi.xyz.videoeditor.util.MediaUtil;
 
 public class MainActivity extends AppCompatActivity {
@@ -48,6 +53,28 @@ public class MainActivity extends AppCompatActivity {
 
         fillMediaSupports(false , findViewById(R.id.support_decode_formats));
         fillMediaSupports(true , findViewById(R.id.support_encode_formats));
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if(requestCode == RequestCode.ACTIVITY_REQUEST_SELECT_AUDIO_FILE && resultCode == Activity.RESULT_OK){
+            handleSelectFile(data);
+        }
+    }
+
+    /**
+     *  处理选择文件返回
+     * @param data
+     */
+    private void handleSelectFile(final Intent data){
+        if(data == null){
+            return;
+        }
+
+        final SelectFileItem selectFile = (SelectFileItem)data.getSerializableExtra("data");
+        AudioPlayerActivity.start(this , selectFile);
     }
 
     private void fillMediaSupports(boolean encode , ViewGroup viewGroup){
